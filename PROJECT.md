@@ -43,10 +43,17 @@ safe to spend = current balance - upcoming bills - savings goal
 - Full accounting features
 - AI-generated financial advice
 - Detailed manual transaction tracking
+- A separate planned-purchase calculator, unless user testing shows that it reduces effort enough to justify another interaction
+
+## Product Decisions
+
+- Keep the safe-to-spend amount immediately visible as the primary experience.
+- Do not require users to enter each purchase or navigate through a separate purchase-checking flow.
+- Make the result trustworthy by showing which upcoming bills and savings amount were reserved.
+- Reconsider a planned-purchase calculator only if user testing shows that people want added reassurance for large purchases.
 
 ## Possible Stretch Features
 
-- Add individual upcoming bills with names and due dates.
 - Support a savings percentage for users with variable income.
 - Warn when a planned purchase would reduce safe-to-spend below a chosen threshold.
 - Schedule a native notification for an upcoming bill or low safe-to-spend amount.
@@ -84,10 +91,13 @@ safe to spend = current balance - upcoming bills - savings goal
 
 1. Verify the calculator on a physical device and capture evidence.
 2. Commit and push the initial calculator milestone.
-3. Improve validation and the result presentation.
-4. Model upcoming bills as individual items with names, amounts, and due dates.
-5. Add persistence through a backend REST API.
-6. Complete and document the partner collaboration workflow.
+3. Improve input validation and make the safe-to-spend result the visual focus.
+4. Replace the single bills total with individual bills containing a name, amount, and due date.
+5. Show a simple explanation of the calculation so users can trust what was reserved.
+6. Add local persistence so the user does not repeatedly enter the same bills.
+7. Add persistence through a backend REST API.
+8. Test the flow with interview participants and revise it based on observed friction.
+9. Complete and document the partner collaboration workflow.
 
 ## Development Approach
 

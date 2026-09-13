@@ -6,13 +6,34 @@ export default function HomeScreen() {
   const [bills, setBills] = useState("");
   const [savingsGoal, setSavingsGoal] = useState("");
   const [safeToSpend, setSafeToSpend] = useState<number | null>(null);
+  const [error, setError] = useState("");
 
   const calculateSafeToSpend = () => {
-    const safe =
-      (parseFloat(balance) || 0) -
-      (parseFloat(bills) || 0) -
-      (parseFloat(savingsGoal) || 0);
-    setSafeToSpend(safe);
+    if (balance.trim() === "") {
+      setError("Enter your current balance.");
+      setSafeToSpend(null);
+      return;
+    }
+
+    setError("");
+
+    const parsedBalance = Number(balance);
+    const parsedBills = bills.trim() === "" ? 0 : Number(bills);
+    const parsedSavings = savingsGoal.trim() === "" ? 0 : Number(savingsGoal);
+
+    if (![parsedBalance, parsedBills, parsedSavings].every(Number.isFinite)) {
+      setError("Enter valid dollar amounts.");
+      setSafeToSpend(null);
+      return;
+    }
+
+    if (parsedBills < 0 || parsedSavings < 0) {
+      setError("Bills and savings cannot be negative.");
+      setSafeToSpend(null);
+      return;
+    }
+
+    const safe = parsedBalance - parsedBills - parsedSavings;
   };
 
   return (
@@ -27,6 +48,8 @@ export default function HomeScreen() {
         placeholder="0.00"
         style={styles.input}
       ></TextInput>
+
+      {error !== "" && <Text style={styles.errorText}>{error}</Text>}
 
       <Text style={styles.label}>Upcoming Bills</Text>
       <TextInput
@@ -103,5 +126,9 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  errorText: {
+    color: "#B42318",
+    marginTop: 6,
   },
 });
