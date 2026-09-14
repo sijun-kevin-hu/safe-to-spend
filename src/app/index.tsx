@@ -1,12 +1,48 @@
+import { Bill } from "@/types/bill";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 export default function HomeScreen() {
   const [balance, setBalance] = useState("");
-  const [bills, setBills] = useState("");
   const [savingsGoal, setSavingsGoal] = useState("");
   const [safeToSpend, setSafeToSpend] = useState<number | null>(null);
   const [error, setError] = useState("");
+
+  const [billName, setBillName] = useState("");
+  const [billAmount, setBillAmount] = useState("");
+  const [billDueDate, setBillDueDate] = useState("");
+  const [billItems, setBillItems] = useState<Bill[]>([]);
+  const [billError, setBillError] = useState("");
+
+  const billsTotal = billItems.reduce((total, bill) => total + bill.amount, 0);
+
+  const addBill = () => {
+    const parsedAmount = Number(billAmount);
+
+    if (billName.trim() === "" || billAmount.trim() === "") {
+      setBillError("Enter a bill name and amount.");
+      return;
+    }
+
+    if (!Number.isFinite(parsedAmount) || parsedAmount < 0) {
+      setBillError("Enter a valid bill amount.");
+      return;
+    }
+
+    const newBill: Bill = {
+      id: Date.now().toString(),
+      name: billName.trim(),
+      amount: parsedAmount,
+      dueDate: billDueDate.trim(),
+    };
+
+    setBillItems((currentBills) => [...currentBills, newBill]);
+    setSafeToSpend(null);
+    setBillName("");
+    setBillAmount("");
+    setBillDueDate("");
+    setBillError("");
+  };
 
   const calculateSafeToSpend = () => {
     if (balance.trim() === "") {
@@ -18,22 +54,21 @@ export default function HomeScreen() {
     setError("");
 
     const parsedBalance = Number(balance);
-    const parsedBills = bills.trim() === "" ? 0 : Number(bills);
     const parsedSavings = savingsGoal.trim() === "" ? 0 : Number(savingsGoal);
 
-    if (![parsedBalance, parsedBills, parsedSavings].every(Number.isFinite)) {
+    if (![parsedBalance, parsedSavings].every(Number.isFinite)) {
       setError("Enter valid dollar amounts.");
       setSafeToSpend(null);
       return;
     }
 
-    if (parsedBills < 0 || parsedSavings < 0) {
-      setError("Bills and savings cannot be negative.");
+    if (parsedSavings < 0) {
+      setError("Savings cannot be negative.");
       setSafeToSpend(null);
       return;
     }
 
-    const safe = parsedBalance - parsedBills - parsedSavings;
+    const safe = parsedBalance - billsTotal - parsedSavings;
     setSafeToSpend(safe);
   };
 
@@ -44,25 +79,65 @@ export default function HomeScreen() {
       <Text style={styles.label}>Current Balance</Text>
       <TextInput
         value={balance.toString()}
-        onChangeText={setBalance}
+        onChangeText={(text) => {
+          setBalance(text);
+          setSafeToSpend(null);
+          setError("");
+        }}
         keyboardType="decimal-pad"
         placeholder="0.00"
         style={styles.input}
       ></TextInput>
 
-      <Text style={styles.label}>Upcoming Bills</Text>
+      <Text style={styles.label}>Add an upcoming bill</Text>
       <TextInput
-        value={bills}
-        onChangeText={setBills}
-        keyboardType="decimal-pad"
-        placeholder="0.00"
+        value={billName}
+        onChangeText={setBillName}
+        placeholder="Bill name"
         style={styles.input}
-      ></TextInput>
+      />
+
+      <TextInput
+        value={billAmount}
+        onChangeText={setBillAmount}
+        keyboardType="decimal-pad"
+        placeholder="Amount"
+        style={styles.input}
+      />
+
+      <TextInput
+        value={billDueDate}
+        onChangeText={setBillDueDate}
+        placeholder="Due date"
+        style={styles.input}
+      />
+
+      {billError !== "" && <Text style={styles.errorText}>{billError}</Text>}
+
+      <Pressable onPress={addBill} style={styles.button}>
+        <Text style={styles.buttonText}>Add bill</Text>
+      </Pressable>
+
+      <Text style={styles.label}>
+        Upcoming bills total: ${billsTotal.toFixed(2)}
+      </Text>
+
+      {billItems.map((bill) => (
+        <View key={bill.id} style={styles.billItem}>
+          <Text>{bill.name}</Text>
+          <Text>${bill.amount.toFixed(2)}</Text>
+          {bill.dueDate !== "" && <Text>Due {bill.dueDate}</Text>}
+        </View>
+      ))}
 
       <Text style={styles.label}>Savings Goal</Text>
       <TextInput
         value={savingsGoal}
-        onChangeText={setSavingsGoal}
+        onChangeText={(text) => {
+          setSavingsGoal(text);
+          setSafeToSpend(null);
+          setError("");
+        }}
         keyboardType="decimal-pad"
         placeholder="0.00"
         style={styles.input}
@@ -174,5 +249,11 @@ const styles = StyleSheet.create({
   resultMessage: {
     color: "#555555",
     textAlign: "center",
+  },
+  billItem: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: "#F4F4F4",
+    borderRadius: 8,
   },
 });

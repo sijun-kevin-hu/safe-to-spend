@@ -85,14 +85,16 @@ safe to spend = current balance - upcoming bills - savings goal
 - Current balance, upcoming bills, and savings goal inputs added.
 - Safe-to-spend calculation implemented.
 - Blank inputs treated as zero.
+- Required-balance, invalid-number, and negative bill/savings validation added.
+- Positive and negative safe-to-spend results presented in a calm result card.
 - TypeScript and whitespace checks pass for the initial calculator milestone.
 
 ## Next Steps
 
 1. Verify the calculator on a physical device and capture evidence.
 2. Commit and push the initial calculator milestone.
-3. Improve input validation and make the safe-to-spend result the visual focus.
-4. Replace the single bills total with individual bills containing a name, amount, and due date.
+3. Replace the single bills total with individual bills containing a name, amount, and due date.
+4. Reconsider component extraction only after the individual-bills flow reveals meaningful duplication.
 5. Show a simple explanation of the calculation so users can trust what was reserved.
 6. Add local persistence so the user does not repeatedly enter the same bills.
 7. Add persistence through a backend REST API.
