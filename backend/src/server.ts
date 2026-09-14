@@ -6,13 +6,7 @@ import express = require("express");
 
 const app: express.Express = express();
 app.use(express.json());
-const port = 3000;
-
-let plan: Plan = {
-  balance: 0,
-  savingsGoal: 0,
-  billItems: [],
-};
+const port = Number(process.env.PORT) || 3000;
 
 type PlanResponse = Plan | { error: string };
 type AuthResponse = { id: string; email: string | null } | { error: string };
@@ -67,14 +61,33 @@ app.get<{}, PlanResponse>("/plan", requireAuth, async (_req, res) => {
   res.json(result.data);
 });
 
-app.put<{}, PlanResponse, unknown>("/plan", (req, res) => {
+app.put<{}, PlanResponse, unknown>("/plan", requireAuth, async (req, res) => {
   const result = planSchema.safeParse(req.body);
   if (!result.success) {
     res.status(400).json({ error: "Invalid plan." });
     return;
   }
-  plan = result.data;
-  res.json(plan);
+
+  const user = res.locals.user;
+  const userSupabase = res.locals.supabase;
+  const { error } = await userSupabase.from("plans").upsert(
+    {
+      user_id: user.id,
+      balance: result.data.balance,
+      savings_goal: result.data.savingsGoal,
+      bill_items: result.data.billItems,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  );
+
+  if (error) {
+    console.error("Unable to save plan to Supabase:", error);
+    res.status(500).json({ error: "Unable to save plan." });
+    return;
+  }
+
+  res.json(result.data);
 });
 
 app.listen(port, () => {

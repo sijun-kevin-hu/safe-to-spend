@@ -112,6 +112,9 @@ safe to spend = current balance - upcoming bills - savings goal
 - Supabase `plans` table created with one plan per authenticated user, an `auth.users` foreign key, and owner-only SELECT, INSERT, and UPDATE Row Level Security policies.
 - Express authentication middleware now validates Supabase bearer tokens and shares the authenticated user with protected route handlers; `/auth/me` uses the middleware.
 - Authentication middleware also creates a request-scoped Supabase client so database queries carry the correct user's token and remain protected by RLS.
+- Authenticated plan reads and writes now use Supabase persistence; PUT validates input and upserts only the verified user's row.
+- Backend production scripts compile TypeScript to `dist`, and the server honors the deployment host's `PORT` environment variable.
+- Render deployment configuration and backend setup/API documentation added; Supabase values remain deployment secrets.
 
 ## Debugging Notes
 
