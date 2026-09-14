@@ -58,6 +58,7 @@ safe to spend = current balance - upcoming bills - savings goal
 - Fast-track the coursework submission: stop adding product features after the basic Home/Plan flow and prioritize the required physical-device, REST backend, Git, partner, and documentation evidence.
 - Build the backend with Node.js, Express, and TypeScript so the mobile app and API use the same language and package-management workflow.
 - Add authentication and user-specific plan storage only after the basic health and plan endpoints work, keeping bank connections and financial credentials out of scope.
+- Use Supabase for hosted PostgreSQL storage and authentication while retaining Express as the custom REST API and business-logic layer.
 
 ## Possible Stretch Features
 
@@ -83,6 +84,7 @@ safe to spend = current balance - upcoming bills - savings goal
 - TypeScript
 - Expo Router
 - Node.js, Express, and TypeScript for the backend
+- Supabase PostgreSQL and Supabase Auth for persistent, user-specific data
 - Git and GitHub
 
 ## Current Progress
@@ -105,7 +107,7 @@ safe to spend = current balance - upcoming bills - savings goal
 - TypeScript and whitespace checks pass for the initial calculator milestone.
 - Node.js, Express, and TypeScript backend initialized in the same repository.
 - Backend `GET /health` endpoint verified locally and returns `{ "status": "ok" }`.
-- Backend plan and bill types now mirror the mobile data shape, and `GET /plan` returns a typed in-memory plan.
+- Backend plan and bill types now mirror the mobile data shape; typed `GET /plan` and `PUT /plan` endpoints read and update an in-memory plan.
 
 ## Debugging Notes
 
