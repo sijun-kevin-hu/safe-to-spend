@@ -122,7 +122,7 @@ safe to spend = current balance - upcoming bills - savings goal
 - The native iOS date picker initially inherited a dark appearance inside a light card, making its controls difficult to see. It now uses an explicit light theme, high-contrast panel, and product accent color.
 - After plan data moved into shared Context, Home could display an outdated calculated result when bills or savings changed on Plan. Home now invalidates the result whenever balance, savings, or the bill list changes.
 - The first Vercel backend deployment compiled successfully but failed because the project expected a static `public` output directory. The backend is an Express function, so the static Output Directory override must be cleared before redeploying.
-- A later Vercel build omitted TypeScript development dependencies and failed to resolve the Node type definitions even though `@types/node` was committed. When the install override did not resolve it, the compiler and required type packages were promoted to production dependencies so deployment builds remain self-contained.
+- A later Vercel deployment reported TS2688 for Node types. Changing dependency installation did not resolve it. Full logs showed the project build succeeded and Vercel's separate TypeScript 7 transpilation failed; omitted dependencies were not established as the cause. The backend compiler is now pinned to TypeScript 5.9.3 as a compatibility workaround. Local type checks and production build pass; cloud redeployment remains pending.
 
 ## Next Steps
 
