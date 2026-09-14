@@ -1,6 +1,6 @@
 import { CurrencyInput } from "@/components/currency-input";
 import { usePlan } from "@/context/plan-context";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Keyboard,
   Pressable,
@@ -16,6 +16,10 @@ export default function HomeScreen() {
   const [error, setError] = useState("");
 
   const billsTotal = billItems.reduce((total, bill) => total + bill.amount, 0);
+
+  useEffect(() => {
+    setSafeToSpend(null);
+  }, [balance, savingsGoal, billItems]);
 
   const calculateSafeToSpend = () => {
     if (balance.trim() === "") {
