@@ -96,7 +96,15 @@ safe to spend = current balance - upcoming bills - savings goal
 - Home reduced to balance entry, protected totals, calculation, and result.
 - Plan screen created for savings and individual bill management.
 - Plan-specific savings and bill validation added.
+- Added explicit keyboard dismissal after physical-device testing showed that the iOS decimal keypad offered no obvious way to close it.
+- Currency inputs now use a visible dollar prefix, stronger placeholder contrast, and two-decimal formatting after entry.
+- Upcoming bills use a clearer protected-money card and a native date picker for due dates.
 - TypeScript and whitespace checks pass for the initial calculator milestone.
+
+## Debugging Notes
+
+- On iOS, numeric inputs using the decimal keypad did not provide an obvious Done key. Home and Plan now dismiss the keyboard when the user taps outside an input, with submit-to-dismiss support on keyboards that expose a return key.
+- The native iOS date picker initially inherited a dark appearance inside a light card, making its controls difficult to see. It now uses an explicit light theme, high-contrast panel, and product accent color.
 
 ## Next Steps
 

@@ -1,3 +1,4 @@
+import { CurrencyInput } from "@/components/currency-input";
 import { usePlan } from "@/context/plan-context";
 import { useState } from "react";
 import {
@@ -5,7 +6,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 
@@ -54,18 +54,14 @@ export default function HomeScreen() {
       <Text style={styles.title}>Safe to Spend</Text>
 
       <Text style={styles.label}>Current Balance</Text>
-      <TextInput
+      <CurrencyInput
+        accessibilityLabel="Current balance"
         value={balance}
         onChangeText={(text) => {
           setBalance(text);
           setSafeToSpend(null);
           setError("");
         }}
-        keyboardType="decimal-pad"
-        placeholder="0.00"
-        style={styles.input}
-        returnKeyType="done"
-        onSubmitEditing={Keyboard.dismiss}
       />
 
       <Text style={styles.label}>
@@ -129,14 +125,6 @@ const styles = StyleSheet.create({
   label: {
     marginTop: 32,
     marginBottom: 8,
-    color: "#111111",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#cccccc",
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 18,
     color: "#111111",
   },
   button: {
