@@ -121,6 +121,8 @@ safe to spend = current balance - upcoming bills - savings goal
 - On iOS, numeric inputs using the decimal keypad did not provide an obvious Done key. Home and Plan now dismiss the keyboard when the user taps outside an input, with submit-to-dismiss support on keyboards that expose a return key.
 - The native iOS date picker initially inherited a dark appearance inside a light card, making its controls difficult to see. It now uses an explicit light theme, high-contrast panel, and product accent color.
 - After plan data moved into shared Context, Home could display an outdated calculated result when bills or savings changed on Plan. Home now invalidates the result whenever balance, savings, or the bill list changes.
+- The first Vercel backend deployment compiled successfully but failed because the project expected a static `public` output directory. The backend is an Express function, so the static Output Directory override must be cleared before redeploying.
+- A later Vercel build omitted TypeScript development dependencies and failed to resolve the Node type definitions even though `@types/node` was committed. When the install override did not resolve it, the compiler and required type packages were promoted to production dependencies so deployment builds remain self-contained.
 
 ## Next Steps
 
