@@ -1,11 +1,9 @@
 import { CurrencyInput } from "@/components/currency-input";
-import { PlanActions } from "@/components/plan-actions";
 import { usePlan } from "@/context/plan-context";
 import { useEffect, useState } from "react";
 import {
   Keyboard,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -52,11 +50,6 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScrollView
-      keyboardShouldPersistTaps="handled"
-      keyboardDismissMode="on-drag"
-      contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
-    >
       <Pressable
         style={styles.container}
         onPress={Keyboard.dismiss}
@@ -117,9 +110,7 @@ export default function HomeScreen() {
             </Text>
           </View>
         )}
-        <PlanActions />
       </Pressable>
-    </ScrollView>
   );
 }
 

@@ -91,6 +91,7 @@ safe to spend = current balance - upcoming bills - savings goal
 
 - Mobile Supabase sign-up/sign-in, persistent sessions, foreground token refresh, and sign-out implemented. The root authentication gate prevents Home/Plan from mounting while signed out; user changes remount the plan provider to discard prior account state.
 - Mobile plan provider loads through the Vercel API and offers explicit Save plan actions. Failed initial loads block editing and provide retry/sign-out rather than allowing empty data to overwrite a saved plan.
+- Home uses its original non-scrolling layout, with tap-outside keyboard dismissal. Save plan and Sign out live only on Plan; saving includes the balance edited on Home. Plan retains scrolling so its longer form stays accessible.
 - Production API at https://safe-to-spend-chi.vercel.app verified: health returns 200 and unauthenticated plan access returns 401. Authenticated two-account and physical-device testing remain pending.
 - Mobile configuration uses the root `.env.example`; Expo needs EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY in its own root environment file. No secret/service-role key belongs in the app.
 
@@ -131,12 +132,9 @@ safe to spend = current balance - upcoming bills - savings goal
 
 ## Next Steps
 
-1. Deploy the Express backend and configure its Supabase environment variables.
-2. Add Expo sign-up, sign-in, persistent sessions, and protected navigation.
-3. Connect the Expo plan state to the authenticated backend GET and PUT endpoints.
-4. Verify the full flow on a physical device and capture app/backend evidence.
-5. Complete and document the two-way partner collaboration workflow.
-6. Finish setup instructions, annotated references and AI use, debugging notes, screenshots or video, repository/API URLs, and collaboration lessons.
+1. Verify sign-up/sign-in, saving, reopening the app, and separate accounts on a physical device; capture app/backend evidence. Deployment and mobile integration are implemented, but authenticated end-to-end verification remains pending.
+2. Complete and document the two-way partner collaboration workflow: each person clones, builds, modifies, tests, deploys, and commits the other's code, then fetches and runs the returned changes on their device.
+3. Finish the individual submission: setup instructions, annotated references and AI use, debugging notes, screenshots or video, repository/API URLs, Git history, and collaboration lessons.
 
 Local persistence, advanced savings strategies, notifications, further UI refinement, and additional interview testing are deferred until the required assignment workflow is complete.
 
