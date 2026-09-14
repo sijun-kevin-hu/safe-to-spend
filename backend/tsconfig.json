@@ -19,6 +19,5 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true
-  },
-  "extends": "expo/tsconfig.base"
+  }
 }
