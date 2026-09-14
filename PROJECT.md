@@ -108,6 +108,10 @@ safe to spend = current balance - upcoming bills - savings goal
 - Node.js, Express, and TypeScript backend initialized in the same repository.
 - Backend `GET /health` endpoint verified locally and returns `{ "status": "ok" }`.
 - Backend plan and bill types now mirror the mobile data shape; typed `GET /plan` and `PUT /plan` endpoints read and update an in-memory plan.
+- Zod runtime validation protects the plan-writing contract, and a safely configured Supabase client is ready for persistent storage.
+- Supabase `plans` table created with one plan per authenticated user, an `auth.users` foreign key, and owner-only SELECT, INSERT, and UPDATE Row Level Security policies.
+- Express authentication middleware now validates Supabase bearer tokens and shares the authenticated user with protected route handlers; `/auth/me` uses the middleware.
+- Authentication middleware also creates a request-scoped Supabase client so database queries carry the correct user's token and remain protected by RLS.
 
 ## Debugging Notes
 
