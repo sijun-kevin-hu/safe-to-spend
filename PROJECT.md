@@ -56,6 +56,8 @@ safe to spend = current balance - upcoming bills - savings goal
 - Put individual bills, savings strategies, and other advanced controls in a separate Plan area rather than presenting every form on Home.
 - If optional reserves are missing, explicitly tell the user that the result currently uses only the information provided.
 - Fast-track the coursework submission: stop adding product features after the basic Home/Plan flow and prioritize the required physical-device, REST backend, Git, partner, and documentation evidence.
+- Build the backend with Node.js, Express, and TypeScript so the mobile app and API use the same language and package-management workflow.
+- Add authentication and user-specific plan storage only after the basic health and plan endpoints work, keeping bank connections and financial credentials out of scope.
 
 ## Possible Stretch Features
 
@@ -80,6 +82,7 @@ safe to spend = current balance - upcoming bills - savings goal
 - React 19
 - TypeScript
 - Expo Router
+- Node.js, Express, and TypeScript for the backend
 - Git and GitHub
 
 ## Current Progress
@@ -100,6 +103,9 @@ safe to spend = current balance - upcoming bills - savings goal
 - Currency inputs now use a visible dollar prefix, stronger placeholder contrast, and two-decimal formatting after entry.
 - Upcoming bills use a clearer protected-money card and a native date picker for due dates.
 - TypeScript and whitespace checks pass for the initial calculator milestone.
+- Node.js, Express, and TypeScript backend initialized in the same repository.
+- Backend `GET /health` endpoint verified locally and returns `{ "status": "ok" }`.
+- Backend plan and bill types now mirror the mobile data shape, and `GET /plan` returns a typed in-memory plan.
 
 ## Debugging Notes
 
@@ -111,10 +117,11 @@ safe to spend = current balance - upcoming bills - savings goal
 
 1. Verify the Home/Plan flow on a physical device and capture evidence.
 2. Commit and push the Home/Plan milestone.
-3. Build and deploy the smallest backend REST API needed to save and retrieve a plan.
-4. Connect the mobile app to the deployed API and capture evidence.
-5. Complete and document the two-way partner collaboration workflow.
-6. Finish setup instructions, annotated references and AI use, debugging notes, screenshots or video, repository/API URLs, and collaboration lessons.
+3. Add REST endpoints and persistent storage for saving and retrieving a plan.
+4. Add user registration, login, secure password hashing, token authentication, and user-specific plan access.
+5. Deploy the backend, connect the mobile app to it, and capture evidence.
+6. Complete and document the two-way partner collaboration workflow.
+7. Finish setup instructions, annotated references and AI use, debugging notes, screenshots or video, repository/API URLs, and collaboration lessons.
 
 Local persistence, advanced savings strategies, notifications, further UI refinement, and additional interview testing are deferred until the required assignment workflow is complete.
 
