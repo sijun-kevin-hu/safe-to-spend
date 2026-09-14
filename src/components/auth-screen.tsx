@@ -1,0 +1,193 @@
+import { supabase } from "@/lib/supabase";
+import { useState } from "react";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+} from "react-native";
+
+export function AuthScreen() {
+  const [creating, setCreating] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  async function submit() {
+    if (!supabase || busy) return;
+    if (!email.trim() || !password) {
+      setMessage("Enter your email and password.");
+      return;
+    }
+    if (creating && password.length < 8) {
+      setMessage("Use at least 8 characters for your password.");
+      return;
+    }
+    setBusy(true);
+    setMessage("");
+    try {
+      const credentials = { email: email.trim(), password };
+      const { data, error } = creating
+        ? await supabase.auth.signUp(credentials)
+        : await supabase.auth.signInWithPassword(credentials);
+      if (error) throw error;
+      setPassword("");
+      if (creating && !data.session) {
+        setMessage(
+          "Check your email to confirm your account, then return here to sign in.",
+        );
+        setCreating(false);
+      }
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to connect. Please try again.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: "#fff" }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
+        <Text style={styles.brand}>Safe to Spend</Text>
+        <Text style={styles.title}>
+          {creating ? "Create your account" : "Welcome back"}
+        </Text>
+        <Text style={styles.hint}>
+          Keep your plan private and ready when you need it. No bank connection
+          required.
+        </Text>
+        {!supabase && (
+          <Text accessibilityRole="alert" style={styles.message}>
+            Add the mobile Supabase variables to your root .env file and restart
+            Expo.
+          </Text>
+        )}
+        <Text style={styles.label}>Email</Text>
+        <TextInput
+          accessibilityLabel="Email"
+          style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+          editable={!busy}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="email"
+          placeholder="you@example.com"
+          placeholderTextColor="#667085"
+        />
+        <Text style={styles.label}>Password</Text>
+        <TextInput
+          accessibilityLabel="Password"
+          style={styles.input}
+          value={password}
+          onChangeText={setPassword}
+          editable={!busy}
+          secureTextEntry
+          autoCapitalize="none"
+          autoComplete={creating ? "new-password" : "current-password"}
+          placeholder={creating ? "At least 8 characters" : "Your password"}
+          placeholderTextColor="#667085"
+          returnKeyType="go"
+          onSubmitEditing={submit}
+        />
+        {!!message && (
+          <Text accessibilityRole="alert" style={styles.message}>
+            {message}
+          </Text>
+        )}
+        <Pressable
+          accessibilityRole="button"
+          disabled={busy || !supabase}
+          onPress={submit}
+          style={[styles.button, (busy || !supabase) && { opacity: 0.5 }]}
+        >
+          <Text style={styles.buttonText}>
+            {busy ? "Please wait…" : creating ? "Create account" : "Sign in"}
+          </Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          disabled={busy}
+          style={styles.switch}
+          onPress={() => {
+            setCreating(!creating);
+            setMessage("");
+            setPassword("");
+          }}
+        >
+          <Text style={styles.link}>
+            {creating
+              ? "Already have an account? Sign in"
+              : "New here? Create an account"}
+          </Text>
+        </Pressable>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flexGrow: 1,
+    justifyContent: "center",
+    padding: 28,
+    paddingVertical: 70,
+    width: "100%",
+    maxWidth: 480,
+    alignSelf: "center",
+  },
+  brand: {
+    color: "#167D5A",
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 28,
+  },
+  title: { color: "#111", fontSize: 30, fontWeight: "700" },
+  hint: {
+    color: "#52665E",
+    fontSize: 16,
+    lineHeight: 24,
+    marginTop: 12,
+    marginBottom: 20,
+  },
+  label: {
+    color: "#344054",
+    marginTop: 16,
+    marginBottom: 8,
+    fontWeight: "600",
+  },
+  input: {
+    backgroundColor: "#fff",
+    color: "#111",
+    borderWidth: 1,
+    borderColor: "#B8C0BD",
+    borderRadius: 10,
+    padding: 14,
+    fontSize: 16,
+  },
+  message: { color: "#B42318", marginTop: 16, lineHeight: 22 },
+  button: {
+    backgroundColor: "#167D5A",
+    padding: 16,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 24,
+  },
+  buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  switch: { paddingVertical: 20, alignItems: "center" },
+  link: { color: "#126247", fontWeight: "600" },
+});

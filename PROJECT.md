@@ -89,6 +89,11 @@ safe to spend = current balance - upcoming bills - savings goal
 
 ## Current Progress
 
+- Mobile Supabase sign-up/sign-in, persistent sessions, foreground token refresh, and sign-out implemented. The root authentication gate prevents Home/Plan from mounting while signed out; user changes remount the plan provider to discard prior account state.
+- Mobile plan provider loads through the Vercel API and offers explicit Save plan actions. Failed initial loads block editing and provide retry/sign-out rather than allowing empty data to overwrite a saved plan.
+- Production API at https://safe-to-spend-chi.vercel.app verified: health returns 200 and unauthenticated plan access returns 401. Authenticated two-account and physical-device testing remain pending.
+- Mobile configuration uses the root `.env.example`; Expo needs EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY in its own root environment file. No secret/service-role key belongs in the app.
+
 - Expo project created and connected to Expo Application Services.
 - Git repository created and connected to GitHub.
 - Default home screen replaced with a Safe to Spend form.

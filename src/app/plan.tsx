@@ -1,4 +1,5 @@
 import { CurrencyInput } from "@/components/currency-input";
+import { PlanActions } from "@/components/plan-actions";
 import { usePlan } from "@/context/plan-context";
 import type { Bill } from "@/types/bill";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -45,6 +46,10 @@ export default function PlanScreen() {
 
   const addBill = () => {
     const parsedAmount = Number(billAmount);
+    if (!billDueDate) {
+      setBillError("Choose a due date.");
+      return;
+    }
 
     if (billName.trim() === "" || billAmount.trim() === "") {
       setBillError("Enter a bill name and amount.");
@@ -142,7 +147,9 @@ export default function PlanScreen() {
             }}
             style={styles.dateButton}
           >
-            <Text style={billDueDate ? styles.dateText : styles.datePlaceholder}>
+            <Text
+              style={billDueDate ? styles.dateText : styles.datePlaceholder}
+            >
               {billDueDate
                 ? billDueDate.toLocaleDateString()
                 : "Choose a due date"}
@@ -188,6 +195,7 @@ export default function PlanScreen() {
             <Text style={styles.buttonText}>Add bill</Text>
           </Pressable>
         </View>
+        <PlanActions />
       </Pressable>
     </ScrollView>
   );

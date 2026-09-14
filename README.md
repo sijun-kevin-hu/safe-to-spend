@@ -1,5 +1,13 @@
 # Welcome to your Expo app 👋
 
+## Safe to Spend authentication setup
+
+Copy the root `.env.example` to `.env` and set the Supabase project URL and publishable key. Keep the API URL set to `https://safe-to-spend-chi.vercel.app`. These EXPO_PUBLIC values are bundled into the mobile app; never use a secret/service-role key. Backend environment configuration is separate.
+
+Install with `npm install`, then restart Expo with `npx expo start --clear`. Create an account, confirm the email if required by your Supabase settings, and sign in. Use Save plan after editing balances, savings, or bills. Signing out discards unsaved changes. Bills require a due date.
+
+Verification still needed on a physical device: sign-up/email confirmation, sign-in, save/reload after restarting, sign-out, and isolation between two accounts. Database SELECT/INSERT/UPDATE grants and owner RLS policies must be configured. Auth navigation and session persistence follow the [Supabase React Native guide](https://supabase.com/docs/guides/auth/quickstarts/react-native). This implementation was developed with Codex assistance.
+
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
 ## Get started

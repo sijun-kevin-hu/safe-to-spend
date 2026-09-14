@@ -1,6 +1,8 @@
+import { AuthScreen } from "@/components/auth-screen";
+import { AuthProvider, useAuth } from "@/context/auth-context";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useColorScheme } from "react-native";
+import { ActivityIndicator, Text, View, useColorScheme } from "react-native";
 
 import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import AppTabs from "@/components/app-tabs";
@@ -14,9 +16,31 @@ export default function TabLayout() {
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <AnimatedSplashOverlay />
 
-      <PlanProvider>
-        <AppTabs />
-      </PlanProvider>
+      <AuthProvider>
+        <AuthenticatedApp />
+      </AuthProvider>
     </ThemeProvider>
+  );
+}
+
+function AuthenticatedApp() {
+  const { session, loading, error } = useAuth();
+  if (loading)
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator accessibilityLabel="Restoring session" />
+      </View>
+    );
+  if (!session)
+    return (
+      <>
+        <AuthScreen />
+        {!!error && <Text>{error}</Text>}
+      </>
+    );
+  return (
+    <PlanProvider key={session.user.id}>
+      <AppTabs />
+    </PlanProvider>
   );
 }

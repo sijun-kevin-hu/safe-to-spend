@@ -1,9 +1,11 @@
 import { CurrencyInput } from "@/components/currency-input";
+import { PlanActions } from "@/components/plan-actions";
 import { usePlan } from "@/context/plan-context";
 import { useEffect, useState } from "react";
 import {
   Keyboard,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -50,67 +52,74 @@ export default function HomeScreen() {
   };
 
   return (
-    <Pressable
-      style={styles.container}
-      onPress={Keyboard.dismiss}
-      accessible={false}
+    <ScrollView
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
     >
-      <Text style={styles.title}>Safe to Spend</Text>
-
-      <Text style={styles.label}>Current Balance</Text>
-      <CurrencyInput
-        accessibilityLabel="Current balance"
-        value={balance}
-        onChangeText={(text) => {
-          setBalance(text);
-          setSafeToSpend(null);
-          setError("");
-        }}
-      />
-
-      <Text style={styles.label}>
-        Bills protected: ${billsTotal.toFixed(2)}
-      </Text>
-
-      <Text style={styles.label}>
-        Savings protected: ${(Number(savingsGoal) || 0).toFixed(2)}
-      </Text>
-
-      {error !== "" && <Text style={styles.errorText}>{error}</Text>}
-
       <Pressable
-        onPress={calculateSafeToSpend}
-        style={({ pressed }) => [
-          styles.button,
-          pressed && styles.buttonPressed,
-        ]}
+        style={styles.container}
+        onPress={Keyboard.dismiss}
+        accessible={false}
       >
-        <Text style={styles.buttonText}>Calculate safe to spend</Text>
-      </Pressable>
+        <Text style={styles.title}>Safe to Spend</Text>
 
-      {safeToSpend !== null && (
-        <View
-          style={[
-            styles.resultCard,
-            safeToSpend < 0 && styles.resultCardWarning,
+        <Text style={styles.label}>Current Balance</Text>
+        <CurrencyInput
+          accessibilityLabel="Current balance"
+          value={balance}
+          onChangeText={(text) => {
+            setBalance(text);
+            setSafeToSpend(null);
+            setError("");
+          }}
+        />
+
+        <Text style={styles.label}>
+          Bills protected: ${billsTotal.toFixed(2)}
+        </Text>
+
+        <Text style={styles.label}>
+          Savings protected: ${(Number(savingsGoal) || 0).toFixed(2)}
+        </Text>
+
+        {error !== "" && <Text style={styles.errorText}>{error}</Text>}
+
+        <Pressable
+          onPress={calculateSafeToSpend}
+          style={({ pressed }) => [
+            styles.button,
+            pressed && styles.buttonPressed,
           ]}
         >
-          <Text style={styles.resultLabel}>
-            {safeToSpend >= 0 ? "Safe To Spend" : "Over your safe amount"}
-          </Text>
+          <Text style={styles.buttonText}>Calculate safe to spend</Text>
+        </Pressable>
 
-          <Text style={styles.resultAmount}>
-            ${Math.abs(safeToSpend).toFixed(2)}
-          </Text>
+        {safeToSpend !== null && (
+          <View
+            style={[
+              styles.resultCard,
+              safeToSpend < 0 && styles.resultCardWarning,
+            ]}
+          >
+            <Text style={styles.resultLabel}>
+              {safeToSpend >= 0 ? "Safe To Spend" : "Over your safe amount"}
+            </Text>
 
-          <Text style={styles.resultMessage}>
-            {safeToSpend >= 0
-              ? "Your upcoming bills and savings are protected."
-              : "Your bills and savings exceed your current balance."}
-          </Text>
-        </View>
-      )}
-    </Pressable>
+            <Text style={styles.resultAmount}>
+              ${Math.abs(safeToSpend).toFixed(2)}
+            </Text>
+
+            <Text style={styles.resultMessage}>
+              {safeToSpend >= 0
+                ? "Your upcoming bills and savings are protected."
+                : "Your bills and savings exceed your current balance."}
+            </Text>
+          </View>
+        )}
+        <PlanActions />
+      </Pressable>
+    </ScrollView>
   );
 }
 
