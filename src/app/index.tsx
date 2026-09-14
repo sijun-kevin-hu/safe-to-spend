@@ -1,6 +1,13 @@
 import { usePlan } from "@/context/plan-context";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  Keyboard,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 export default function HomeScreen() {
   const { balance, setBalance, savingsGoal, billItems } = usePlan();
@@ -39,7 +46,11 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <Pressable
+      style={styles.container}
+      onPress={Keyboard.dismiss}
+      accessible={false}
+    >
       <Text style={styles.title}>Safe to Spend</Text>
 
       <Text style={styles.label}>Current Balance</Text>
@@ -53,6 +64,8 @@ export default function HomeScreen() {
         keyboardType="decimal-pad"
         placeholder="0.00"
         style={styles.input}
+        returnKeyType="done"
+        onSubmitEditing={Keyboard.dismiss}
       />
 
       <Text style={styles.label}>
@@ -97,7 +110,7 @@ export default function HomeScreen() {
           </Text>
         </View>
       )}
-    </View>
+    </Pressable>
   );
 }
 

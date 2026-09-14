@@ -1,7 +1,14 @@
 import { usePlan } from "@/context/plan-context";
 import type { Bill } from "@/types/bill";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  Keyboard,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 export default function PlanScreen() {
   const { balance, savingsGoal, setSavingsGoal, billItems, setBillItems } =
@@ -59,7 +66,11 @@ export default function PlanScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <Pressable
+      style={styles.container}
+      onPress={Keyboard.dismiss}
+      accessible={false}
+    >
       <Text style={styles.title}>Your Plan</Text>
       <Text style={styles.description}>
         Protect money for upcoming bills and savings.
@@ -76,6 +87,8 @@ export default function PlanScreen() {
         keyboardType="decimal-pad"
         placeholder="0.00"
         style={styles.input}
+        returnKeyType="done"
+        onSubmitEditing={Keyboard.dismiss}
       />
 
       {savingsError !== "" && (
@@ -96,6 +109,8 @@ export default function PlanScreen() {
         onChangeText={setBillName}
         placeholder="Bill name"
         style={styles.input}
+        returnKeyType="done"
+        onSubmitEditing={Keyboard.dismiss}
       />
 
       <TextInput
@@ -104,6 +119,8 @@ export default function PlanScreen() {
         keyboardType="decimal-pad"
         placeholder="Amount"
         style={styles.input}
+        returnKeyType="done"
+        onSubmitEditing={Keyboard.dismiss}
       />
 
       <TextInput
@@ -111,6 +128,8 @@ export default function PlanScreen() {
         onChangeText={setBillDueDate}
         placeholder="Due date"
         style={styles.input}
+        returnKeyType="done"
+        onSubmitEditing={Keyboard.dismiss}
       />
 
       {billError !== "" && <Text style={styles.errorText}>{billError}</Text>}
@@ -118,7 +137,7 @@ export default function PlanScreen() {
       <Pressable onPress={addBill} style={styles.button}>
         <Text style={styles.buttonText}>Add bill</Text>
       </Pressable>
-    </View>
+    </Pressable>
   );
 }
 
