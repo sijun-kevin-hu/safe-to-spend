@@ -107,14 +107,14 @@ safe to spend = current balance - upcoming bills - savings goal
 - TypeScript and whitespace checks pass for the initial calculator milestone.
 - Node.js, Express, and TypeScript backend initialized in the same repository.
 - Backend `GET /health` endpoint verified locally and returns `{ "status": "ok" }`.
-- Backend plan and bill types now mirror the mobile data shape; typed `GET /plan` and `PUT /plan` endpoints read and update an in-memory plan.
+- Backend plan and bill types mirror the mobile data shape; the typed plan endpoints progressed from an in-memory prototype to Supabase persistence.
 - Zod runtime validation protects the plan-writing contract, and a safely configured Supabase client is ready for persistent storage.
 - Supabase `plans` table created with one plan per authenticated user, an `auth.users` foreign key, and owner-only SELECT, INSERT, and UPDATE Row Level Security policies.
 - Express authentication middleware now validates Supabase bearer tokens and shares the authenticated user with protected route handlers; `/auth/me` uses the middleware.
 - Authentication middleware also creates a request-scoped Supabase client so database queries carry the correct user's token and remain protected by RLS.
 - Authenticated plan reads and writes now use Supabase persistence; PUT validates input and upserts only the verified user's row.
 - Backend production scripts compile TypeScript to `dist`, and the server honors the deployment host's `PORT` environment variable.
-- Render deployment configuration and backend setup/API documentation added; Supabase values remain deployment secrets.
+- Vercel selected to deploy the Express backend from the `backend` subdirectory; Supabase values remain deployment secrets.
 
 ## Debugging Notes
 
@@ -124,13 +124,12 @@ safe to spend = current balance - upcoming bills - savings goal
 
 ## Next Steps
 
-1. Verify the Home/Plan flow on a physical device and capture evidence.
-2. Commit and push the Home/Plan milestone.
-3. Add REST endpoints and persistent storage for saving and retrieving a plan.
-4. Add user registration, login, secure password hashing, token authentication, and user-specific plan access.
-5. Deploy the backend, connect the mobile app to it, and capture evidence.
-6. Complete and document the two-way partner collaboration workflow.
-7. Finish setup instructions, annotated references and AI use, debugging notes, screenshots or video, repository/API URLs, and collaboration lessons.
+1. Deploy the Express backend and configure its Supabase environment variables.
+2. Add Expo sign-up, sign-in, persistent sessions, and protected navigation.
+3. Connect the Expo plan state to the authenticated backend GET and PUT endpoints.
+4. Verify the full flow on a physical device and capture app/backend evidence.
+5. Complete and document the two-way partner collaboration workflow.
+6. Finish setup instructions, annotated references and AI use, debugging notes, screenshots or video, repository/API URLs, and collaboration lessons.
 
 Local persistence, advanced savings strategies, notifications, further UI refinement, and additional interview testing are deferred until the required assignment workflow is complete.
 
