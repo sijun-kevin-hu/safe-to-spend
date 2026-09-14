@@ -1,64 +1,107 @@
-# Welcome to your Expo app 👋
+# Safe to Spend
 
-## Safe to Spend authentication setup
+Safe to Spend is a privacy-first Expo and React Native app that shows how much money remains after protecting upcoming bills and a savings goal. It uses Supabase for authentication and database storage and an Express REST API deployed on Vercel.
 
-Copy the root `.env.example` to `.env` and set the Supabase project URL and publishable key. Keep the API URL set to `https://safe-to-spend-chi.vercel.app`. These EXPO_PUBLIC values are bundled into the mobile app; never use a secret/service-role key. Backend environment configuration is separate.
+## Requirements
 
-Install with `npm install`, then restart Expo with `npx expo start --clear`. Create an account, confirm the email if required by your Supabase settings, and sign in. Use Save plan after editing balances, savings, or bills. Signing out discards unsaved changes. Bills require a due date.
+- Node.js 22.13 or newer
+- npm
+- The Expo Go app on an iOS or Android device
+- A Supabase project URL and publishable key from the project owner
 
-Verification still needed on a physical device: sign-up/email confirmation, sign-in, save/reload after restarting, sign-out, and isolation between two accounts. Database SELECT/INSERT/UPDATE grants and owner RLS policies must be configured. Auth navigation and session persistence follow the [Supabase React Native guide](https://supabase.com/docs/guides/auth/quickstarts/react-native). This implementation was developed with Codex assistance.
+## Run the mobile app
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+1. Clone the repository and enter its directory:
 
-## Get started
+   ```bash
+   git clone https://github.com/sijun-kevin-hu/safe-to-spend.git
+   cd safe-to-spend
+   ```
 
-1. Install dependencies
+2. Install the mobile dependencies:
 
    ```bash
    npm install
    ```
 
-2. Start the app
+3. Copy `.env.example` to `.env`:
 
    ```bash
-   npx expo start
+   cp .env.example .env
    ```
 
-In the output, you'll find options to open the app in a
+4. Add the supplied Supabase project URL and publishable key to `.env`. Keep the deployed API URL as shown:
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+   ```text
+   EXPO_PUBLIC_SUPABASE_URL=your-project-url
+   EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+   EXPO_PUBLIC_API_URL=https://safe-to-spend-chi.vercel.app
+   ```
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+   Only use the Supabase publishable key in the mobile app. Never put a secret or service-role key here.
 
-## Get a fresh project
+5. Start Expo with a cleared cache:
 
-When you're ready, run:
+   ```bash
+   npx expo start --clear
+   ```
 
-```bash
-npm run reset-project
-```
+6. Connect the phone and computer to the same network. Open Expo Go and scan the QR code shown by Expo. If local network discovery does not work, start with `npx expo start --tunnel` instead.
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+7. Create an account and sign in. If email confirmation is enabled, confirm the email before signing in. Edit the balance on Home, edit bills or savings on Plan, and tap **Save plan** on Plan.
 
-### Other setup steps
+## Run the backend locally (optional)
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+The mobile app uses the deployed API by default, so running the backend locally is not required. To work on the backend:
 
-## Learn more
+1. Enter the backend directory and install its dependencies:
 
-To learn more about developing your project with Expo, look at the following resources:
+   ```bash
+   cd backend
+   npm install
+   ```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+2. Copy `backend/.env.example` to `backend/.env` and enter the Supabase project URL and publishable key.
 
-## Join the community
+3. Start the development server:
 
-Join our community of developers creating universal apps.
+   ```bash
+   npm run dev
+   ```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+The local API runs at `http://localhost:3000`. To make the mobile app use it, change `EXPO_PUBLIC_API_URL` in the root `.env` to an address your phone can reach, such as your computer's local network IP address, and restart Expo.
+
+## Useful commands
+
+- `npm start` starts Expo.
+- `npm run ios` opens the iOS target.
+- `npm run android` opens the Android target.
+- `npm run web` opens the web target.
+- `npx tsc --noEmit` checks the mobile TypeScript code.
+- From `backend`, `npm run check` checks the backend TypeScript code.
+- From `backend`, `npm run build` builds the backend.
+
+## Backend API
+
+Production API: [https://safe-to-spend-chi.vercel.app](https://safe-to-spend-chi.vercel.app)
+
+- `GET /health` checks service availability.
+- `GET /auth/me` returns the authenticated user.
+- `GET /plan` retrieves the authenticated user's plan.
+- `PUT /plan` validates and saves the authenticated user's plan.
+
+Protected endpoints require a Supabase access token. Plan data is separated by user through Supabase Row Level Security.
+
+## Verification
+
+The app has been tested on a physical device for account creation/sign-in, saving a plan, restoring the plan after restarting, signing out, and keeping two users' plans separate.
+
+## Technology
+
+- Expo SDK 57 and React Native
+- TypeScript and Expo Router
+- Express REST API
+- Supabase Auth and PostgreSQL
+- Vercel backend deployment
+
+This project was developed with assistance from Codex. See `PROJECT.md` for the product rationale, interview findings, implementation decisions, and debugging notes.
