@@ -34,6 +34,7 @@ export default function HomeScreen() {
     }
 
     const safe = parsedBalance - parsedBills - parsedSavings;
+    setSafeToSpend(safe);
   };
 
   return (
@@ -48,8 +49,6 @@ export default function HomeScreen() {
         placeholder="0.00"
         style={styles.input}
       ></TextInput>
-
-      {error !== "" && <Text style={styles.errorText}>{error}</Text>}
 
       <Text style={styles.label}>Upcoming Bills</Text>
       <TextInput
@@ -69,6 +68,8 @@ export default function HomeScreen() {
         style={styles.input}
       ></TextInput>
 
+      {error !== "" && <Text style={styles.errorText}>{error}</Text>}
+
       <Pressable
         onPress={calculateSafeToSpend}
         style={({ pressed }) => [
@@ -76,11 +77,30 @@ export default function HomeScreen() {
           pressed && styles.buttonPressed,
         ]}
       >
-        <Text style={styles.buttonText}>Continue</Text>
+        <Text style={styles.buttonText}>Calculate safe to spend.</Text>
       </Pressable>
 
       {safeToSpend != null && (
-        <Text>You can safely spend ${safeToSpend.toFixed(2)}</Text>
+        <View
+          style={[
+            styles.resultCard,
+            safeToSpend < 0 && styles.resultCardWarning,
+          ]}
+        >
+          <Text style={styles.resultLabel}>
+            {safeToSpend >= 0 ? "Safe To Spend" : "Over your safe amount"}
+          </Text>
+
+          <Text style={styles.resultAmount}>
+            ${Math.abs(safeToSpend).toFixed(2)}
+          </Text>
+
+          <Text style={styles.resultMessage}>
+            {safeToSpend >= 0
+              ? "Your upcoming bills and savings are protected."
+              : "Your bills and savings exceed your current balance."}
+          </Text>
+        </View>
       )}
     </View>
   );
@@ -130,5 +150,29 @@ const styles = StyleSheet.create({
   errorText: {
     color: "#B42318",
     marginTop: 6,
+  },
+  resultCard: {
+    marginTop: 24,
+    padding: 20,
+    borderRadius: 12,
+    backgroundColor: "#E8F5EF",
+    alignItems: "center",
+  },
+  resultCardWarning: {
+    backgroundColor: "#FDECEC",
+  },
+  resultLabel: {
+    color: "#444444",
+    fontSize: 14,
+  },
+  resultAmount: {
+    color: "#111111",
+    fontSize: 36,
+    fontWeight: "bold",
+    marginVertical: 6,
+  },
+  resultMessage: {
+    color: "#555555",
+    textAlign: "center",
   },
 });
