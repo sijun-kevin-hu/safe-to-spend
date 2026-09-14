@@ -51,6 +51,11 @@ safe to spend = current balance - upcoming bills - savings goal
 - Do not require users to enter each purchase or navigate through a separate purchase-checking flow.
 - Make the result trustworthy by showing which upcoming bills and savings amount were reserved.
 - Reconsider a planned-purchase calculator only if user testing shows that people want added reassurance for large purchases.
+- Use progressive disclosure: require only an available balance, while bills and savings tools remain optional and discoverable.
+- Keep the Home screen focused on the current safe-to-spend amount, a short calculation breakdown, and quick balance updates.
+- Put individual bills, savings strategies, and other advanced controls in a separate Plan area rather than presenting every form on Home.
+- If optional reserves are missing, explicitly tell the user that the result currently uses only the information provided.
+- Fast-track the coursework submission: stop adding product features after the basic Home/Plan flow and prioritize the required physical-device, REST backend, Git, partner, and documentation evidence.
 
 ## Possible Stretch Features
 
@@ -87,19 +92,22 @@ safe to spend = current balance - upcoming bills - savings goal
 - Blank inputs treated as zero.
 - Required-balance, invalid-number, and negative bill/savings validation added.
 - Positive and negative safe-to-spend results presented in a calm result card.
+- Shared balance, savings, and bill data moved into a React Context provider.
+- Home reduced to balance entry, protected totals, calculation, and result.
+- Plan screen created for savings and individual bill management.
+- Plan-specific savings and bill validation added.
 - TypeScript and whitespace checks pass for the initial calculator milestone.
 
 ## Next Steps
 
-1. Verify the calculator on a physical device and capture evidence.
-2. Commit and push the initial calculator milestone.
-3. Replace the single bills total with individual bills containing a name, amount, and due date.
-4. Reconsider component extraction only after the individual-bills flow reveals meaningful duplication.
-5. Show a simple explanation of the calculation so users can trust what was reserved.
-6. Add local persistence so the user does not repeatedly enter the same bills.
-7. Add persistence through a backend REST API.
-8. Test the flow with interview participants and revise it based on observed friction.
-9. Complete and document the partner collaboration workflow.
+1. Verify the Home/Plan flow on a physical device and capture evidence.
+2. Commit and push the Home/Plan milestone.
+3. Build and deploy the smallest backend REST API needed to save and retrieve a plan.
+4. Connect the mobile app to the deployed API and capture evidence.
+5. Complete and document the two-way partner collaboration workflow.
+6. Finish setup instructions, annotated references and AI use, debugging notes, screenshots or video, repository/API URLs, and collaboration lessons.
+
+Local persistence, advanced savings strategies, notifications, further UI refinement, and additional interview testing are deferred until the required assignment workflow is complete.
 
 ## Development Approach
 
