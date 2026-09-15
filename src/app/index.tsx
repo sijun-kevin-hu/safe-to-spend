@@ -1,178 +1,88 @@
+import { AppButton } from "@/components/app-button";
 import { CurrencyInput } from "@/components/currency-input";
+import { Screen } from "@/components/screen";
+import { palette, ui } from "@/constants/design";
 import { usePlan } from "@/context/plan-context";
-import { useEffect, useState } from "react";
-import {
-  Keyboard,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { formatCurrency } from "@/lib/format";
+import { useState } from "react";
+import { Keyboard, StyleSheet, Text, View } from "react-native";
 
 export default function HomeScreen() {
   const { balance, setBalance, savingsGoal, billItems } = usePlan();
-
-  const [safeToSpend, setSafeToSpend] = useState<number | null>(null);
   const [error, setError] = useState("");
-
+  // Store the inputs used for a calculation so edited plans never show a stale answer.
+  const [calculatedInputs, setCalculatedInputs] = useState<string | null>(null);
   const billsTotal = billItems.reduce((total, bill) => total + bill.amount, 0);
+  const savings = Number(savingsGoal || 0);
+  const inputKey = JSON.stringify([
+    balance.trim() ? Number(balance) : null,
+    savings,
+    billItems,
+  ]);
+  const safeToSpend = calculatedInputs === inputKey
+    ? Number(balance) - billsTotal - savings
+    : null;
+  const overBudget = safeToSpend !== null && safeToSpend < 0;
+  const hasReserves = billItems.length > 0 && savings > 0;
 
-  useEffect(() => {
-    setSafeToSpend(null);
-  }, [balance, savingsGoal, billItems]);
-
-  const calculateSafeToSpend = () => {
-    if (balance.trim() === "") {
-      setError("Enter your current balance.");
-      setSafeToSpend(null);
-      return;
+  let resultMessage = "Enter or update your balance, then calculate your spending room.";
+  if (safeToSpend !== null) {
+    if (overBudget) {
+      resultMessage = "Your bills and savings exceed your current balance.";
+    } else if (hasReserves) {
+      resultMessage = "Your listed bills and savings are set aside.";
+    } else {
+      resultMessage = "Based on what you entered. Add bills and savings in Plan for a fuller picture.";
     }
+  }
 
+  function calculate() {
+    Keyboard.dismiss();
+    if (!balance.trim()) return setError("Enter your current balance.");
+    if (![Number(balance), savings].every(Number.isFinite) || savings < 0) {
+      return setError("Enter a valid balance and nonnegative savings amount.");
+    }
     setError("");
-
-    const parsedBalance = Number(balance);
-    const parsedSavings = savingsGoal.trim() === "" ? 0 : Number(savingsGoal);
-
-    if (![parsedBalance, parsedSavings].every(Number.isFinite)) {
-      setError("Enter valid dollar amounts.");
-      setSafeToSpend(null);
-      return;
-    }
-
-    if (parsedSavings < 0) {
-      setError("Savings cannot be negative.");
-      setSafeToSpend(null);
-      return;
-    }
-
-    const safe = parsedBalance - billsTotal - parsedSavings;
-    setSafeToSpend(safe);
-  };
+    setCalculatedInputs(inputKey);
+  }
 
   return (
-      <Pressable
-        style={styles.container}
-        onPress={Keyboard.dismiss}
-        accessible={false}
-      >
-        <Text style={styles.title}>Safe to Spend</Text>
-
-        <Text style={styles.label}>Current Balance</Text>
-        <CurrencyInput
-          accessibilityLabel="Current balance"
-          value={balance}
-          onChangeText={(text) => {
-            setBalance(text);
-            setSafeToSpend(null);
-            setError("");
-          }}
-        />
-
-        <Text style={styles.label}>
-          Bills protected: ${billsTotal.toFixed(2)}
-        </Text>
-
-        <Text style={styles.label}>
-          Savings protected: ${(Number(savingsGoal) || 0).toFixed(2)}
-        </Text>
-
-        {error !== "" && <Text style={styles.errorText}>{error}</Text>}
-
-        <Pressable
-          onPress={calculateSafeToSpend}
-          style={({ pressed }) => [
-            styles.button,
-            pressed && styles.buttonPressed,
-          ]}
-        >
-          <Text style={styles.buttonText}>Calculate safe to spend</Text>
-        </Pressable>
-
-        {safeToSpend !== null && (
-          <View
-            style={[
-              styles.resultCard,
-              safeToSpend < 0 && styles.resultCardWarning,
-            ]}
-          >
-            <Text style={styles.resultLabel}>
-              {safeToSpend >= 0 ? "Safe To Spend" : "Over your safe amount"}
-            </Text>
-
-            <Text style={styles.resultAmount}>
-              ${Math.abs(safeToSpend).toFixed(2)}
-            </Text>
-
-            <Text style={styles.resultMessage}>
-              {safeToSpend >= 0
-                ? "Your upcoming bills and savings are protected."
-                : "Your bills and savings exceed your current balance."}
-            </Text>
-          </View>
-        )}
-      </Pressable>
+    <Screen>
+      <Text accessibilityRole="header" style={ui.title}>Safe to Spend</Text>
+      <View style={[styles.result, overBudget && styles.warning]} accessibilityLiveRegion="polite">
+        <Text style={ui.label}>{overBudget ? "Amount over your balance" : "Safe to spend"}</Text>
+        <Text style={styles.amount}>{safeToSpend === null ? "—" : formatCurrency(Math.abs(safeToSpend))}</Text>
+        <Text style={ui.body}>{resultMessage}</Text>
+      </View>
+      <View style={ui.card}>
+        <Text accessibilityRole="header" style={ui.sectionTitle}>Your breakdown</Text>
+        <View style={ui.row}>
+          <Text style={ui.body}>Bills set aside</Text>
+          <Text style={ui.money}>{formatCurrency(billsTotal)}</Text>
+        </View>
+        <View style={ui.row}>
+          <Text style={ui.body}>Savings set aside</Text>
+          <Text style={ui.money}>{formatCurrency(Number.isFinite(savings) ? savings : 0)}</Text>
+        </View>
+        <Text style={styles.caption}>Manage these amounts in Plan.</Text>
+      </View>
+      <View style={ui.card}>
+        <View>
+          <Text style={ui.label}>Current balance</Text>
+          <CurrencyInput accessibilityLabel="Current balance" value={balance} error={!!error}
+            onChangeText={(text) => { setBalance(text); setError(""); }} />
+        </View>
+        {!!error && <Text accessibilityRole="alert" style={ui.error}>{error}</Text>}
+        <AppButton title="Calculate safe to spend" onPress={calculate} />
+        <Text style={styles.caption}>Balance changes are saved with Save plan in Plan.</Text>
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#ffffff",
-    padding: 24,
-    paddingTop: 80,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#111111",
-  },
-  label: {
-    marginTop: 32,
-    marginBottom: 8,
-    color: "#111111",
-  },
-  button: {
-    marginTop: 24,
-    backgroundColor: "#167D5A",
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  buttonPressed: {
-    opacity: 0.75,
-  },
-  buttonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  errorText: {
-    color: "#B42318",
-    marginTop: 6,
-  },
-  resultCard: {
-    marginTop: 24,
-    padding: 20,
-    borderRadius: 12,
-    backgroundColor: "#E8F5EF",
-    alignItems: "center",
-  },
-  resultCardWarning: {
-    backgroundColor: "#FDECEC",
-  },
-  resultLabel: {
-    color: "#444444",
-    fontSize: 14,
-  },
-  resultAmount: {
-    color: "#111111",
-    fontSize: 36,
-    fontWeight: "bold",
-    marginVertical: 6,
-  },
-  resultMessage: {
-    color: "#555555",
-    textAlign: "center",
-  },
+  result: { padding: 24, borderRadius: 20, backgroundColor: palette.soft, gap: 8 },
+  warning: { backgroundColor: palette.dangerSoft },
+  amount: { color: palette.text, fontSize: 42, fontWeight: "700", fontVariant: ["tabular-nums"], flexShrink: 1 },
+  caption: { color: palette.muted, fontSize: 13, lineHeight: 19 },
 });

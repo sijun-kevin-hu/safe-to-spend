@@ -1,3 +1,7 @@
+import { AppButton } from "@/components/app-button";
+import { Screen } from "@/components/screen";
+import { palette, ui } from "@/constants/design";
+import { formatCurrency, formatBillDate, toDateOnly } from "@/lib/format";
 import { CurrencyInput } from "@/components/currency-input";
 import { PlanActions } from "@/components/plan-actions";
 import { usePlan } from "@/context/plan-context";
@@ -8,7 +12,6 @@ import {
   Keyboard,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -19,10 +22,13 @@ export default function PlanScreen() {
   const { balance, savingsGoal, setSavingsGoal, billItems, setBillItems } =
     usePlan();
 
+  const billsTotal = billItems.reduce((total, bill) => total + bill.amount, 0);
+
   const [billName, setBillName] = useState("");
   const [billAmount, setBillAmount] = useState("");
   const [billDueDate, setBillDueDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [nameFocused, setNameFocused] = useState(false);
   const [billError, setBillError] = useState("");
   const [savingsError, setSavingsError] = useState("");
 
@@ -65,7 +71,7 @@ export default function PlanScreen() {
       id: Date.now().toString(),
       name: billName.trim(),
       amount: parsedAmount,
-      dueDate: billDueDate ? billDueDate.toISOString().slice(0, 10) : "",
+      dueDate: toDateOnly(billDueDate),
     };
 
     setBillItems((currentBills) => [...currentBills, newBill]);
@@ -77,260 +83,143 @@ export default function PlanScreen() {
   };
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.scrollContent}
-      keyboardDismissMode="on-drag"
-      keyboardShouldPersistTaps="handled"
-    >
-      <Pressable onPress={Keyboard.dismiss} accessible={false}>
-        <Text style={styles.title}>Your Plan</Text>
-        <Text style={styles.description}>
-          Protect money for upcoming bills and savings.
-        </Text>
+    <Screen>
+      <Text accessibilityRole="header" style={ui.title}>Your plan</Text>
+      <Text style={styles.description}>
+        Protect money for upcoming bills and savings.
+      </Text>
 
-        <Text style={styles.description}>
-          Current balance: {balance === "" ? "Not entered" : `$${balance}`}
-        </Text>
+      <Text style={styles.description}>
+        Current balance: {balance === "" ? "Not entered" : formatCurrency(Number(balance))}
+      </Text>
 
-        <Text style={styles.label}>Savings goal</Text>
+      <View style={ui.card}>
+        <Text accessibilityRole="header" style={ui.sectionTitle}>Savings</Text>
+        <Text style={ui.body}>Set aside an amount before spending. This is optional.</Text>
+        <Text style={ui.label}>Savings goal</Text>
         <CurrencyInput
+          error={!!savingsError}
           accessibilityLabel="Savings goal"
           value={savingsGoal}
           onChangeText={handleSavingsChange}
         />
 
         {savingsError !== "" && (
-          <Text style={styles.errorText}>{savingsError}</Text>
+          <Text accessibilityRole="alert" style={ui.error}>{savingsError}</Text>
         )}
 
+      </View>
+      <View style={ui.card}>
+        <View style={ui.row}>
+          <Text accessibilityRole="header" style={[ui.sectionTitle, { flexShrink: 1 }]}>Upcoming bills</Text>
+          <Text style={ui.money}>{formatCurrency(billsTotal)}</Text>
+        </View>
+        {billItems.length === 0 && <Text style={ui.body}>No bills added. Add an upcoming bill below to set that money aside.</Text>}
         {billItems.map((bill) => (
           <View key={bill.id} style={styles.billItem}>
-            <Text style={styles.billName}>{bill.name}</Text>
-            <Text style={styles.billAmount}>${bill.amount.toFixed(2)}</Text>
-            {bill.dueDate !== "" && (
-              <Text style={styles.billDate}>Due {bill.dueDate}</Text>
-            )}
+            <View style={styles.billDetails}>
+              <Text style={styles.billName}>{bill.name}</Text>
+              {!!bill.dueDate && <Text style={styles.billDate}>Due {formatBillDate(bill.dueDate)}</Text>}
+            </View>
+            <Text style={ui.money}>{formatCurrency(bill.amount)}</Text>
           </View>
         ))}
 
-        <View style={styles.billCard}>
-          <Text style={styles.sectionTitle}>Add an upcoming bill</Text>
-          <Text style={styles.sectionHint}>
-            This amount will be protected from your safe-to-spend total.
-          </Text>
+      </View>
+      <View style={ui.card}>
+        <Text accessibilityRole="header" style={ui.sectionTitle}>Add an upcoming bill</Text>
+        <Text style={styles.sectionHint}>
+          This amount will be protected from your safe-to-spend total.
+        </Text>
 
-          <Text style={styles.fieldLabel}>Bill name</Text>
-          <TextInput
-            value={billName}
-            onChangeText={setBillName}
-            placeholder="Rent, phone, utilities"
-            placeholderTextColor="#667085"
-            style={styles.input}
-            returnKeyType="done"
-            onSubmitEditing={Keyboard.dismiss}
-          />
+        <Text style={styles.fieldLabel}>Bill name</Text>
+        <TextInput
+          value={billName}
+          onChangeText={setBillName}
+          placeholder="Rent, phone, utilities"
+          placeholderTextColor="#667085"
+          accessibilityLabel="Bill name"
+          onFocus={() => setNameFocused(true)}
+          onBlur={() => setNameFocused(false)}
+          style={[ui.input, nameFocused && { borderColor: palette.accent }]}
+          returnKeyType="done"
+          onSubmitEditing={Keyboard.dismiss}
+        />
 
-          <Text style={styles.fieldLabel}>Amount</Text>
-          <CurrencyInput
-            accessibilityLabel="Bill amount"
-            value={billAmount}
-            onChangeText={setBillAmount}
-          />
+        <Text style={styles.fieldLabel}>Amount</Text>
+        <CurrencyInput
+          accessibilityLabel="Bill amount"
+          value={billAmount}
+          onChangeText={setBillAmount}
+        />
 
-          <Text style={styles.fieldLabel}>Due date</Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => {
-              Keyboard.dismiss();
-              setShowDatePicker(true);
-            }}
-            style={styles.dateButton}
+        <Text style={styles.fieldLabel}>Due date</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => {
+            Keyboard.dismiss();
+            setShowDatePicker(true);
+          }}
+          style={({ pressed }) => [styles.dateButton, pressed && { opacity: 0.6 }]}
+        >
+          <Text
+            style={billDueDate ? styles.dateText : styles.datePlaceholder}
           >
-            <Text
-              style={billDueDate ? styles.dateText : styles.datePlaceholder}
-            >
-              {billDueDate
-                ? billDueDate.toLocaleDateString()
-                : "Choose a due date"}
-            </Text>
-          </Pressable>
+            {billDueDate
+              ? billDueDate.toLocaleDateString()
+              : "Choose a due date"}
+          </Text>
+        </Pressable>
 
-          {showDatePicker && (
-            <View style={styles.datePickerPanel}>
-              <DateTimePicker
-                value={billDueDate ?? new Date()}
-                mode="date"
-                minimumDate={new Date()}
-                display={Platform.OS === "ios" ? "inline" : "default"}
-                themeVariant="light"
-                accentColor="#167D5A"
-                onChange={(_event, selectedDate) => {
-                  if (Platform.OS === "android") {
-                    setShowDatePicker(false);
-                  }
-                  if (selectedDate) {
-                    setBillDueDate(selectedDate);
-                  }
-                }}
-              />
+        {showDatePicker && (
+          <View style={styles.datePickerPanel}>
+            <DateTimePicker
+              value={billDueDate ?? new Date()}
+              mode="date"
+              minimumDate={new Date()}
+              display={Platform.OS === "ios" ? "inline" : "default"}
+              themeVariant="light"
+              accentColor="#167D5A"
+              onChange={(_event, selectedDate) => {
+                if (Platform.OS === "android") {
+                  setShowDatePicker(false);
+                }
+                if (selectedDate) {
+                  setBillDueDate(selectedDate);
+                }
+              }}
+            />
 
-              {Platform.OS === "ios" && (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => setShowDatePicker(false)}
-                  style={styles.dateDoneButton}
-                >
-                  <Text style={styles.dateDoneText}>Done</Text>
-                </Pressable>
-              )}
-            </View>
-          )}
+            {Platform.OS === "ios" && (
+              <AppButton title="Done" variant="secondary" onPress={() => setShowDatePicker(false)} />
+            )}
+          </View>
+        )}
 
-          {billError !== "" && (
-            <Text style={styles.errorText}>{billError}</Text>
-          )}
+        {billError !== "" && (
+          <Text accessibilityRole="alert" style={ui.error}>{billError}</Text>
+        )}
 
-          <Pressable onPress={addBill} style={styles.button}>
-            <Text style={styles.buttonText}>Add bill</Text>
-          </Pressable>
-        </View>
-        <PlanActions />
-      </Pressable>
-    </ScrollView>
+        <AppButton title="Add bill" variant="secondary" onPress={addBill} />
+      </View>
+      <PlanActions />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#ffffff",
-  },
-  scrollContent: {
-    padding: 24,
-    paddingTop: 80,
-    paddingBottom: 120,
-  },
-  title: {
-    color: "#111111",
-    fontSize: 32,
-    fontWeight: "bold",
-  },
-  description: {
-    color: "#555555",
-    marginTop: 8,
-    fontSize: 16,
-  },
-  label: {
-    marginTop: 32,
-    marginBottom: 8,
-    color: "#111111",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#B8C0BD",
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 18,
-    color: "#111111",
-    backgroundColor: "#FFFFFF",
-  },
-  buttonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  errorText: {
-    color: "#B42318",
-    marginTop: 6,
-  },
-  button: {
-    marginTop: 24,
-    backgroundColor: "#167D5A",
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: "center",
-  },
+  description: { ...ui.body, marginTop: -12 },
   billItem: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: "#F4F4F4",
-    borderRadius: 8,
+    flexDirection: "row", alignItems: "center", gap: 16,
+    paddingTop: 16, borderTopWidth: 1, borderTopColor: palette.border
   },
-  billName: {
-    color: "#111111",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  billAmount: {
-    color: "#344054",
-    fontSize: 16,
-    marginTop: 4,
-  },
-  billDate: {
-    color: "#667085",
-    fontSize: 14,
-    marginTop: 2,
-  },
-  billCard: {
-    marginTop: 28,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: "#D8E3DE",
-    borderRadius: 16,
-    backgroundColor: "#F4F8F6",
-  },
-  sectionTitle: {
-    color: "#183D30",
-    fontSize: 20,
-    fontWeight: "700",
-  },
-  sectionHint: {
-    color: "#52665E",
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 6,
-    marginBottom: 8,
-  },
-  fieldLabel: {
-    color: "#344054",
-    fontSize: 14,
-    fontWeight: "600",
-    marginTop: 14,
-    marginBottom: 6,
-  },
-  dateButton: {
-    minHeight: 48,
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#B8C0BD",
-    borderRadius: 10,
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 12,
-  },
-  dateText: {
-    color: "#111111",
-    fontSize: 16,
-  },
-  datePlaceholder: {
-    color: "#667085",
-    fontSize: 16,
-  },
-  dateDoneButton: {
-    alignSelf: "flex-end",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  dateDoneText: {
-    color: "#167D5A",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  datePickerPanel: {
-    marginTop: 8,
-    borderRadius: 12,
-    backgroundColor: "#FFFFFF",
-    overflow: "hidden",
-  },
+  billDetails: { flex: 1, gap: 4 },
+  billName: { color: palette.text, fontSize: 16, fontWeight: "600" },
+  billDate: { color: palette.muted, fontSize: 14 },
+  sectionHint: { ...ui.body },
+  fieldLabel: { ...ui.label, marginBottom: -8 },
+  dateButton: { ...ui.input, justifyContent: "center" },
+  dateText: { color: palette.text, fontSize: 16 },
+  datePlaceholder: { color: palette.muted, fontSize: 16 },
+  datePickerPanel: { borderRadius: 12, backgroundColor: palette.surface, overflow: "hidden" },
 });

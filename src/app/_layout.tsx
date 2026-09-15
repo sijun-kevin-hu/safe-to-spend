@@ -1,8 +1,9 @@
 import { AuthScreen } from "@/components/auth-screen";
 import { AuthProvider, useAuth } from "@/context/auth-context";
-import { DarkTheme, DefaultTheme, ThemeProvider } from "expo-router";
+import { DefaultTheme, ThemeProvider } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
-import { ActivityIndicator, Text, View, useColorScheme } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 
 import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import AppTabs from "@/components/app-tabs";
@@ -11,9 +12,9 @@ import { PlanProvider } from "@/context/plan-context";
 SplashScreen.preventAutoHideAsync();
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={DefaultTheme}>
+      <StatusBar style="dark" />
       <AnimatedSplashOverlay />
 
       <AuthProvider>

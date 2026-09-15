@@ -1,9 +1,10 @@
+import { AppButton } from "@/components/app-button";
+import { palette, ui } from "@/constants/design";
 import { supabase } from "@/lib/supabase";
 import { useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,9 +16,12 @@ export function AuthScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [messageKind, setMessageKind] = useState<"error" | "success">("error");
+  const [focusedField, setFocusedField] = useState<"email" | "password" | null>(null);
   const [message, setMessage] = useState("");
   async function submit() {
     if (!supabase || busy) return;
+    setMessageKind("error");
     if (!email.trim() || !password) {
       setMessage("Enter your email and password.");
       return;
@@ -36,6 +40,7 @@ export function AuthScreen() {
       if (error) throw error;
       setPassword("");
       if (creating && !data.session) {
+        setMessageKind("success");
         setMessage(
           "Check your email to confirm your account, then return here to sign in.",
         );
@@ -78,7 +83,9 @@ export function AuthScreen() {
         <Text style={styles.label}>Email</Text>
         <TextInput
           accessibilityLabel="Email"
-          style={styles.input}
+          onFocus={() => setFocusedField("email")}
+          onBlur={() => setFocusedField(null)}
+          style={[styles.input, focusedField === "email" && styles.focused]}
           value={email}
           onChangeText={setEmail}
           editable={!busy}
@@ -92,7 +99,9 @@ export function AuthScreen() {
         <Text style={styles.label}>Password</Text>
         <TextInput
           accessibilityLabel="Password"
-          style={styles.input}
+          onFocus={() => setFocusedField("password")}
+          onBlur={() => setFocusedField(null)}
+          style={[styles.input, focusedField === "password" && styles.focused]}
           value={password}
           onChangeText={setPassword}
           editable={!busy}
@@ -105,36 +114,16 @@ export function AuthScreen() {
           onSubmitEditing={submit}
         />
         {!!message && (
-          <Text accessibilityRole="alert" style={styles.message}>
+          <Text accessibilityLiveRegion="polite" style={[styles.message, messageKind === "success" && { color: palette.accent }]}>
             {message}
           </Text>
         )}
-        <Pressable
-          accessibilityRole="button"
-          disabled={busy || !supabase}
-          onPress={submit}
-          style={[styles.button, (busy || !supabase) && { opacity: 0.5 }]}
-        >
-          <Text style={styles.buttonText}>
-            {busy ? "Please wait…" : creating ? "Create account" : "Sign in"}
-          </Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          disabled={busy}
-          style={styles.switch}
-          onPress={() => {
-            setCreating(!creating);
-            setMessage("");
-            setPassword("");
-          }}
-        >
-          <Text style={styles.link}>
-            {creating
-              ? "Already have an account? Sign in"
-              : "New here? Create an account"}
-          </Text>
-        </Pressable>
+        <AppButton title={busy ? "Please wait…" : creating ? "Create account" : "Sign in"}
+          disabled={busy || !supabase} onPress={submit} />
+        <AppButton title={creating ? "Already have an account? Sign in" : "New here? Create an account"}
+          variant="text" disabled={busy} onPress={() => {
+            setCreating(!creating); setMessage(""); setPassword("");
+          }} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -173,21 +162,13 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: "#fff",
     color: "#111",
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: "#B8C0BD",
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 14,
     fontSize: 16,
+    marginBottom: 16,
   },
-  message: { color: "#B42318", marginTop: 16, lineHeight: 22 },
-  button: {
-    backgroundColor: "#167D5A",
-    padding: 16,
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 24,
-  },
-  buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  switch: { paddingVertical: 20, alignItems: "center" },
-  link: { color: "#126247", fontWeight: "600" },
+  message: { ...ui.error, marginBottom: 16 },
+  focused: { borderColor: palette.accent, borderWidth: 2 },
 });

@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { palette } from "@/constants/design";
 import { Keyboard, StyleSheet, Text, TextInput, View } from "react-native";
 
 type CurrencyInputProps = {
@@ -5,6 +7,7 @@ type CurrencyInputProps = {
   onChangeText: (text: string) => void;
   accessibilityLabel: string;
   placeholder?: string;
+  error?: boolean;
 };
 
 export function CurrencyInput({
@@ -12,7 +15,9 @@ export function CurrencyInput({
   onChangeText,
   accessibilityLabel,
   placeholder = "0.00",
+  error = false,
 }: CurrencyInputProps) {
+  const [focused, setFocused] = useState(false);
   const formatValue = () => {
     if (value.trim() === "") return;
 
@@ -23,13 +28,14 @@ export function CurrencyInput({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, focused && { borderColor: palette.accent, borderWidth: 2 }, error && { borderColor: palette.danger }]}>
       <Text style={styles.symbol}>$</Text>
       <TextInput
         accessibilityLabel={accessibilityLabel}
         value={value}
         onChangeText={onChangeText}
-        onBlur={formatValue}
+        onFocus={() => setFocused(true)}
+        onBlur={() => { setFocused(false); formatValue(); }}
         keyboardType="decimal-pad"
         placeholder={placeholder}
         placeholderTextColor="#667085"
@@ -43,23 +49,24 @@ export function CurrencyInput({
 
 const styles = StyleSheet.create({
   container: {
+    minHeight: 48,
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#B8C0BD",
-    borderRadius: 10,
-    backgroundColor: "#FFFFFF",
+    borderWidth: 2,
+    borderColor: palette.border,
+    borderRadius: 12,
+    backgroundColor: palette.surface,
     paddingHorizontal: 12,
   },
   symbol: {
-    color: "#344054",
+    color: palette.muted,
     fontSize: 18,
     fontWeight: "600",
     marginRight: 6,
   },
   input: {
     flex: 1,
-    color: "#111111",
+    color: palette.text,
     fontSize: 18,
     paddingVertical: 12,
   },
