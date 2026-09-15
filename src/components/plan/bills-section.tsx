@@ -7,6 +7,7 @@ import { usePlan } from "@/context/plan-context";
 import type { Bill } from "@/types/bill";
 import { useState } from "react";
 import {
+  Alert,
   Keyboard,
   StyleSheet,
   Text,
@@ -24,6 +25,28 @@ export function BillsSection() {
   const [billDueDate, setBillDueDate] = useState<Date | null>(null);
   const [nameFocused, setNameFocused] = useState(false);
   const [billError, setBillError] = useState("");
+
+  const removeBill = (bill: Bill) => {
+    Alert.alert(
+      "Remove bill?",
+      `Remove "${bill.name}" (${formatCurrency(bill.amount)}) from your upcoming bills?`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: () => {
+            setBillItems((currentBills) =>
+              currentBills.filter((item) => item.id !== bill.id)
+            );
+          },
+        },
+      ]
+    );
+  };
   const addBill = () => {
     const parsedAmount = Number(billAmount);
     if (!billDueDate) {
@@ -69,8 +92,20 @@ export function BillsSection() {
           <View key={bill.id} style={styles.billItem}>
             <View style={styles.billDetails}>
               <Text style={styles.billName}>{bill.name}</Text>
-              {!!bill.dueDate && <Text style={styles.billDate}>Due {formatBillDate(bill.dueDate)}</Text>}
+
+              {!!bill.dueDate && (
+                <Text style={styles.billDate}>
+                  Due {formatBillDate(bill.dueDate)}
+                </Text>
+              )}
+
+              <AppButton
+                title="Remove bill"
+                variant="text"
+                onPress={() => removeBill(bill)}
+              />
             </View>
+
             <Text style={ui.money}>{formatCurrency(bill.amount)}</Text>
           </View>
         ))}
