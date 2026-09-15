@@ -26,6 +26,9 @@ test('save confirmation accepts JSONB key order but rejects missing tracking and
   global.fetch = async () => ({ ok: true, json: async () => response });
   try {
     assert.equal((await requestPlan('preview', input)).balance, 87.66);
+    await assert.rejects(requestPlan('preview', {
+      ...input, purchases: [{ ...input.purchases[0], note: 'Coffee' }],
+    }), 'an old API must not silently discard a purchase description');
     response = { ...response, balance: 100 };
     await assert.rejects(requestPlan('preview', input));
     response = { balance: 87.66, savingsAmount: null, savingsPercentage: null, savingsReserved: 0, billItems: [] };

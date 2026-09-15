@@ -78,7 +78,8 @@ export async function requestPlan(
       (balanceUpdatedAt !== null && (typeof balanceUpdatedAt !== "string" || !Number.isFinite(Date.parse(balanceUpdatedAt)))) ||
       !Array.isArray(purchases) || !purchases.every((item: Purchase) =>
         item && typeof item.id === "string" && Number.isFinite(item.amount) && item.amount >= 0.01 &&
-        typeof item.createdAt === "string" && Number.isFinite(Date.parse(item.createdAt))) ||
+        typeof item.createdAt === "string" && Number.isFinite(Date.parse(item.createdAt)) &&
+        (item.note === undefined || (typeof item.note === "string" && item.note.length <= 120))) ||
       new Set(purchases.map((item: Purchase) => item.id)).size !== purchases.length
     ) throw new Error("The server returned invalid tracking data.");
     if (plan && (
@@ -88,7 +89,8 @@ export async function requestPlan(
       value.balance !== plan.balance ||
       (purchases.length !== plan.purchases.length || purchases.some((item: Purchase, index: number) => {
         const sent = plan.purchases[index];
-        return item.id !== sent.id || item.amount !== sent.amount || item.createdAt !== sent.createdAt;
+        return item.id !== sent.id || item.amount !== sent.amount || item.createdAt !== sent.createdAt ||
+          (item.note ?? "") !== (sent.note ?? "");
       }))
     )) throw new Error("The server did not save your balance or tracking preference. Please update the API.");
     return {

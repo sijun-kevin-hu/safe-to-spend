@@ -1,3 +1,4 @@
+import { PurchaseHome } from "@/components/home/purchase-home";
 import { SaveStatus } from "@/components/plan/save-status";
 import { AppButton } from "@/components/app-button";
 import { CurrencyInput } from "@/components/currency-input";
@@ -6,72 +7,64 @@ import { palette, ui } from "@/constants/design";
 import { usePlan } from "@/context/plan-context";
 import { formatCurrency } from "@/lib/format";
 import { useEffect, useRef, useState } from "react";
-import { Keyboard, StyleSheet, Text, View } from "react-native";
+import { BackHandler, Keyboard, StyleSheet, Text, View } from "react-native";
+
+import { useIsFocused } from "expo-router";
 
 type Action = "purchases" | "balance";
 
 export default function HomeScreen() {
-  const {
-    balance, balanceUpdatedAt, trackingPreference, updateBalance, addPurchase,
-    savingsReserved, validationError, billItems, purchases, saveState,
-  } = usePlan();
-  const [actionOverride, setActionOverride] = useState<Action | null>(null);
+  const { trackingPreference } = usePlan();
+  return <HomeMode key={trackingPreference} preference={trackingPreference ?? "balance"} />;
+}
+
+function HomeMode({ preference }: { preference: Action }) {
+  const [view, setView] = useState<Action>(preference);
+  const isFocused = useIsFocused();
+  useEffect(() => {
+    if (!isFocused || view === preference) return;
+    const listener = BackHandler.addEventListener("hardwareBackPress", () => {
+      setView(preference);
+      return true;
+    });
+    return () => listener.remove();
+  }, [isFocused, view, preference]);
+  if (view === "purchases") return <PurchaseHome
+    onBalance={() => setView("balance")}
+    onBack={preference === "balance" ? () => setView("balance") : undefined} />;
+  return <BalanceHome onPurchases={() => setView("purchases")}
+    onUpdated={preference === "purchases" ? () => setView("purchases") : undefined} />;
+}
+
+function BalanceHome({ onPurchases, onUpdated }: {
+  onPurchases: () => void;
+  onUpdated?: () => void;
+}) {
+  const { balance, balanceUpdatedAt, updateBalance, savingsReserved,
+    validationError, billItems, purchases, saveState } = usePlan();
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const submitted = useRef(false);
-  const [historyOverride, setHistoryOverride] = useState<boolean | null>(null);
   const billsTotal = billItems.reduce((total, bill) => total + bill.amount, 0);
   const safeToSpend = balanceUpdatedAt && !validationError
     ? Number(balance) - billsTotal - savingsReserved : null;
   const overBudget = safeToSpend !== null && safeToSpend < 0;
-  const primaryAction = balanceUpdatedAt ? trackingPreference ?? "balance" : "balance";
-  const action = actionOverride ?? primaryAction;
-  const otherAction = action === "balance" ? "purchases" : "balance";
-  const showHistory = historyOverride ?? trackingPreference === "purchases";
-  const actionTitle = (value: Action) => value === "purchases" ? "Add purchase" : "Update balance";
-
-  useEffect(() => {
-    setActionOverride(null);
-    setDraft("");
-    setError("");
-    setNotice("");
-    setHistoryOverride(null);
-    submitted.current = false;
-  }, [trackingPreference]);
-
-  function openAction(next: Action) {
-    Keyboard.dismiss();
-    submitted.current = false;
-    setActionOverride(next === primaryAction ? null : next);
-    setDraft("");
-    setError("");
-    setNotice("");
-  }
 
   function submit() {
     if (submitted.current || saveState !== "saved") return;
     const amount = Number(draft);
     if (!draft.trim() || !Number.isFinite(amount) || Math.abs(amount) > 1e12) {
-      setError("Enter a valid amount below one trillion dollars.");
-      return;
-    }
-    if (action === "purchases" && amount < 0.01) {
-      setError("Enter a purchase amount of at least $0.01.");
+      setError("Enter a valid balance.");
       return;
     }
     submitted.current = true;
     Keyboard.dismiss();
-    if (action === "purchases") {
-      addPurchase(amount);
-      setNotice("Purchase added. Your balance includes this spending.");
-    } else {
-      updateBalance(amount);
-      setNotice("Balance updated. Past purchases won’t be subtracted again.");
-    }
-    setActionOverride(null);
+    updateBalance(amount);
+    setNotice("Balance updated. Past purchases won’t be subtracted again.");
     setDraft("");
     setError("");
+    onUpdated?.();
   }
 
   let resultMessage = "Update your current balance to get started.";
@@ -98,29 +91,18 @@ export default function HomeScreen() {
         : "Confirm your current balance before logging purchases."}</Text>
       {purchases[0] && <Text style={styles.caption}>Last purchase logged: {formatTimestamp(purchases[0].createdAt)}</Text>}
       <View style={styles.entry}>
-        <Text accessibilityRole="header" style={ui.sectionTitle}>
-          {action === "purchases" ? "Log a purchase" : "Balance check-in"}
-        </Text>
-        <Text style={ui.body}>{action === "purchases"
-          ? "Enter what you spent. Your available spending updates immediately."
-          : !balanceUpdatedAt && trackingPreference === "purchases"
-            ? "Set your starting balance once. After this, Home opens straight to purchase entry."
-            : "Check your balance in your banking app, then enter it here. No purchase-by-purchase tracking needed."}</Text>
-        <Text style={ui.label}>{action === "purchases" ? "Purchase amount" : "Current balance"}</Text>
-        <CurrencyInput accessibilityLabel={action === "purchases" ? "Purchase amount" : "Current balance"}
-          value={draft} error={!!error} onChangeText={(value) => {
-            submitted.current = false;
-            setDraft(value);
-            setError("");
-          }} />
-        {action === "balance" && balanceUpdatedAt &&
-          <Text style={styles.caption}>Include your latest purchases. This replaces the balance above.</Text>}
+        <Text accessibilityRole="header" style={ui.sectionTitle}>Balance check-in</Text>
+        <Text style={ui.body}>{!balanceUpdatedAt && onUpdated
+          ? "Set your starting balance once, then start logging purchases."
+          : "Check your balance in your banking app, then enter it here. No purchase-by-purchase tracking needed."}</Text>
+        <Text style={ui.label}>Current balance</Text>
+        <CurrencyInput accessibilityLabel="Current balance" value={draft} error={!!error}
+          onChangeText={(value) => { submitted.current = false; setDraft(value); setError(""); }} />
+        {balanceUpdatedAt && <Text style={styles.caption}>Include your latest purchases. This replaces the balance above.</Text>}
         {!!error && <Text accessibilityRole="alert" style={ui.error}>{error}</Text>}
-        <AppButton title={actionTitle(action)} disabled={saveState !== "saved"} onPress={submit} />
-        <AppButton title={actionOverride ? "Back to my usual tracking" : otherAction === "balance"
-          ? "Update my balance instead" : "Log a purchase instead"}
-          variant="text" disabled={!balanceUpdatedAt && otherAction === "purchases"}
-          onPress={() => openAction(actionOverride ? primaryAction : otherAction)} />
+        <AppButton title="Update balance" disabled={saveState !== "saved"} onPress={submit} />
+        <AppButton title={onUpdated ? "Back to purchases" : "Log or view purchases"}
+          variant="text" onPress={onPurchases} />
       </View>
       {!!notice && <Text accessibilityLiveRegion="polite" style={ui.body}>{notice}</Text>}
       <SaveStatus />
@@ -138,19 +120,6 @@ export default function HomeScreen() {
       </View>
       <Text style={styles.caption}>Manage these amounts in Plan.</Text>
     </View>
-    {(purchases.length > 0 || trackingPreference === "purchases") && <View style={ui.card}>
-      <AppButton title={showHistory ? "Hide recent purchases" : "View recent purchases"}
-        variant="text" onPress={() => setHistoryOverride(!showHistory)} />
-      {showHistory && <>
-        <Text style={ui.body}>{purchases.length
-          ? "Your latest five entries. Already included in your balance when logged."
-          : "Your purchases will appear here as you add them."}</Text>
-        {purchases.slice(0, 5).map((purchase) => <View key={purchase.id} style={ui.row}>
-          <Text style={[ui.body, styles.date]}>{formatTimestamp(purchase.createdAt)}</Text>
-          <Text style={ui.money}>{formatCurrency(purchase.amount)}</Text>
-        </View>)}
-      </>}
-    </View>}
   </Screen>;
 }
 
@@ -167,5 +136,4 @@ const styles = StyleSheet.create({
   balance: { ...ui.money, fontSize: 28 },
   entry: { gap: 12, borderTopWidth: 1, borderTopColor: palette.border, paddingTop: 20 },
   caption: { color: palette.muted, fontSize: 13, lineHeight: 19 },
-  date: { flex: 1 },
 });

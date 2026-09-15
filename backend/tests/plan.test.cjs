@@ -69,3 +69,11 @@ test('tracking preferences and purchase history survive API validation', () => {
     { purchases: [tracking.purchases[0], tracking.purchases[0]] },
   ]) assert.equal(planSchema.safeParse({ ...base, ...tracking, ...invalid }).success, false);
 });
+
+
+test('purchase descriptions are optional, trimmed, and limited to 120 characters', () => {
+  const purchase = { id: 'one', amount: 4.5, createdAt: '2026-09-15T12:00:00.000Z' };
+  assert.equal(planSchema.parse({ ...base, purchases: [{ ...purchase, note: ' Coffee ' }] }).purchases[0].note, 'Coffee');
+  assert.equal(planSchema.safeParse({ ...base, purchases: [purchase] }).success, true);
+  assert.equal(planSchema.safeParse({ ...base, purchases: [{ ...purchase, note: 'x'.repeat(121) }] }).success, false);
+});

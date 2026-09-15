@@ -30,7 +30,7 @@ type PlanContextValue = {
   balanceUpdatedAt: string | null;
   purchases: TrackingState["purchases"];
   updateBalance: (value: number) => void;
-  addPurchase: (amount: number) => void;
+  addPurchase: (amount: number, note?: string) => void;
   savingsMode: SavingsMode;
   savingsValue: string;
   setSavingsValue: Dispatch<SetStateAction<string>>;
@@ -93,10 +93,11 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
     const now = new Date().toISOString();
     setTracking((current) => updateTrackingBalance(current, value, now));
   }
-  function addPurchase(amount: number) {
+  function addPurchase(amount: number, note = "") {
     const purchase = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       amount: Math.round(amount * 100) / 100,
+      note: note.trim(),
       createdAt: new Date().toISOString(),
     };
     setTracking((current) => recordPurchase(current, purchase));

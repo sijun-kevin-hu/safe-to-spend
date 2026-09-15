@@ -48,10 +48,10 @@ safe to spend = current balance - upcoming bills - savings goal
 ## Product Decisions
 
 - Ask how users want to keep their balance up to date after their first authenticated sign-in: Log purchases or Update my balance. Existing accounts without a preference see the same one-time choice. Save the preference with their plan and allow changes in Plan → Balance tracking.
-- Both Home actions remain available. The preference opens the matching Home form directly: purchase amount entry with recent purchases expanded, or a balance check-in with history collapsed. The alternative is a secondary text action; a first balance check-in comes first for everyone.
+- Both Home actions remain available. The preference selects a distinct Home view. Purchase tracking shows logged-today totals, quick amount and optional description entry, and visible day-grouped history with Show older purchases. Balance check-in keeps the balance calculator layout and opens the same purchase view through Log or view purchases, with Back to balance check-in navigation. A starting balance is required before the first purchase, without hiding the purchase view.
 - Logging a purchase deducts its amount from the working balance once and stores the entry. Updating the balance replaces the working balance, retains purchase history, and never reapplies old purchases. Show when the balance was last checked separately from the latest purchase timestamp.
 - Home calculates spending room immediately from committed balance, bills, and savings. Balance drafts require Update balance; they do not change the saved plan while typing. Percentage savings retain their existing behavior of recalculating from the current balance.
-- The lightweight purchase view shows the latest five entries. Purchases are stored in the plan JSON for this MVP; full history navigation, editing, refunds, and concurrent multi-device conflict resolution remain out of scope.
+- The purchase view shows 20 entries initially and loads 20 more on request. Descriptions are optional and limited to 120 characters; existing entries without descriptions remain supported. Purchases are stored in the plan JSON for this MVP; full history navigation, editing, refunds, and concurrent multi-device conflict resolution remain out of scope.
 
 - Keep the safe-to-spend amount immediately visible as the primary experience.
 - Do not require users to enter each purchase or navigate through a separate purchase-checking flow.
@@ -95,6 +95,8 @@ safe to spend = current balance - upcoming bills - savings goal
 - Git and GitHub
 
 ## Current Progress
+
+- Purchase tracking now uses a dedicated Home screen with logged-today totals, quick amount/optional-description entry, and visible day-grouped history (20 at a time). Balance check-in keeps its existing Home and opens the complete purchase UI on demand with return navigation. Validated through 17 tests, TypeScript, backend build, web export, and synthetic browser checks for described purchase saving/reload, distinct preference routing, optional tracker navigation, and 320px overflow. Physical-device checks remain pending. Redeploy the API for purchase descriptions; no additional SQL migration beyond 002 is needed because purchases already use JSON storage.
 
 - Tracking onboarding, changeable Plan preference, amount-only purchase entry, balance replacement, recent purchases, and separate balance-check/purchase timestamps are implemented. Home calculates from committed values immediately. Verified with 16 focused tests (10 frontend/API-client, 6 backend), frontend TypeScript, backend build, web export, and synthetic-account browser checks for onboarding, deduction, balance replacement, preference changes, reload persistence, zero-purchase rejection, keyboard focus, and 320px overflow. Production database writes and physical-device behavior remain unverified for this flow.
 

@@ -1,7 +1,7 @@
 import type { Bill } from "@/types/bill";
 
 export type TrackingPreference = "purchases" | "balance";
-export type Purchase = { id: string; amount: number; createdAt: string };
+export type Purchase = { id: string; amount: number; createdAt: string; note?: string };
 export type TrackingState = {
   balance: number;
   balanceUpdatedAt: string | null;

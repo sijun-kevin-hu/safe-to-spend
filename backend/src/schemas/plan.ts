@@ -9,6 +9,7 @@ const planInputSchema = z.object({
     id: z.string().min(1).max(100),
     amount: z.number().min(0.01),
     createdAt: z.iso.datetime(),
+    note: z.string().trim().max(120).optional(),
   })).refine((items) => new Set(items.map((item) => item.id)).size === items.length,
     { message: "Purchase IDs must be unique." }).default([]),
   savingsAmount: z.number().nonnegative().nullable().default(null),

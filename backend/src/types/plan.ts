@@ -4,7 +4,7 @@ export interface Plan {
   balance: number;
   trackingPreference: "purchases" | "balance" | null;
   balanceUpdatedAt: string | null;
-  purchases: { id: string; amount: number; createdAt: string }[];
+  purchases: { id: string; amount: number; createdAt: string; note?: string | undefined }[];
   savingsAmount: number | null;
   savingsPercentage: number | null;
   savingsReserved: number;
