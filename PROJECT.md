@@ -48,7 +48,7 @@ safe to spend = current balance - upcoming bills - savings goal
 ## Product Decisions
 
 - Ask how users want to keep their balance up to date after their first authenticated sign-in: Log purchases or Update my balance. Existing accounts without a preference see the same one-time choice. Save the preference with their plan and allow changes in Plan → Balance tracking.
-- Both Home actions remain available. The preference determines which action is prominent once a balance has been confirmed; a first balance check-in comes first for everyone.
+- Both Home actions remain available. The preference opens the matching Home form directly: purchase amount entry with recent purchases expanded, or a balance check-in with history collapsed. The alternative is a secondary text action; a first balance check-in comes first for everyone.
 - Logging a purchase deducts its amount from the working balance once and stores the entry. Updating the balance replaces the working balance, retains purchase history, and never reapplies old purchases. Show when the balance was last checked separately from the latest purchase timestamp.
 - Home calculates spending room immediately from committed balance, bills, and savings. Balance drafts require Update balance; they do not change the saved plan while typing. Percentage savings retain their existing behavior of recalculating from the current balance.
 - The lightweight purchase view shows the latest five entries. Purchases are stored in the plan JSON for this MVP; full history navigation, editing, refunds, and concurrent multi-device conflict resolution remain out of scope.

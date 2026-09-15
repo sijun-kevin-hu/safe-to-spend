@@ -15,32 +15,36 @@ export default function HomeScreen() {
     balance, balanceUpdatedAt, trackingPreference, updateBalance, addPurchase,
     savingsReserved, validationError, billItems, purchases, saveState,
   } = usePlan();
-  const [action, setAction] = useState<Action | null>(null);
+  const [actionOverride, setActionOverride] = useState<Action | null>(null);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const submitted = useRef(false);
-  const [showHistory, setShowHistory] = useState(false);
+  const [historyOverride, setHistoryOverride] = useState<boolean | null>(null);
   const billsTotal = billItems.reduce((total, bill) => total + bill.amount, 0);
   const safeToSpend = balanceUpdatedAt && !validationError
     ? Number(balance) - billsTotal - savingsReserved : null;
   const overBudget = safeToSpend !== null && safeToSpend < 0;
   const primaryAction = balanceUpdatedAt ? trackingPreference ?? "balance" : "balance";
-  const secondaryAction = primaryAction === "balance" ? "purchases" : "balance";
+  const action = actionOverride ?? primaryAction;
+  const otherAction = action === "balance" ? "purchases" : "balance";
+  const showHistory = historyOverride ?? trackingPreference === "purchases";
   const actionTitle = (value: Action) => value === "purchases" ? "Add purchase" : "Update balance";
 
   useEffect(() => {
-    setAction(null);
+    setActionOverride(null);
     setDraft("");
     setError("");
     setNotice("");
+    setHistoryOverride(null);
+    submitted.current = false;
   }, [trackingPreference]);
 
   function openAction(next: Action) {
     Keyboard.dismiss();
     submitted.current = false;
-    setAction(next);
-    setDraft(next === "balance" && balanceUpdatedAt ? balance : "");
+    setActionOverride(next === primaryAction ? null : next);
+    setDraft("");
     setError("");
     setNotice("");
   }
@@ -65,7 +69,7 @@ export default function HomeScreen() {
       updateBalance(amount);
       setNotice("Balance updated. Past purchases won’t be subtracted again.");
     }
-    setAction(null);
+    setActionOverride(null);
     setDraft("");
     setError("");
   }
@@ -93,22 +97,31 @@ export default function HomeScreen() {
         ? `Balance last checked: ${formatTimestamp(balanceUpdatedAt)}`
         : "Confirm your current balance before logging purchases."}</Text>
       {purchases[0] && <Text style={styles.caption}>Last purchase logged: {formatTimestamp(purchases[0].createdAt)}</Text>}
-      {action === null ? <>
-        <AppButton title={actionTitle(primaryAction)} onPress={() => openAction(primaryAction)} />
-        <AppButton title={actionTitle(secondaryAction)} variant="secondary"
-          disabled={secondaryAction === "purchases" && !balanceUpdatedAt}
-          onPress={() => openAction(secondaryAction)} />
-      </> : <>
+      <View style={styles.entry}>
+        <Text accessibilityRole="header" style={ui.sectionTitle}>
+          {action === "purchases" ? "Log a purchase" : "Balance check-in"}
+        </Text>
+        <Text style={ui.body}>{action === "purchases"
+          ? "Enter what you spent. Your available spending updates immediately."
+          : !balanceUpdatedAt && trackingPreference === "purchases"
+            ? "Set your starting balance once. After this, Home opens straight to purchase entry."
+            : "Check your balance in your banking app, then enter it here. No purchase-by-purchase tracking needed."}</Text>
         <Text style={ui.label}>{action === "purchases" ? "Purchase amount" : "Current balance"}</Text>
         <CurrencyInput accessibilityLabel={action === "purchases" ? "Purchase amount" : "Current balance"}
-          value={draft} error={!!error} onChangeText={(value) => { setDraft(value); setError(""); }} />
-        <Text style={ui.body}>{action === "purchases"
-          ? "Today’s purchase will be deducted from your balance."
-          : "Use a balance that includes your latest purchases. This replaces the balance above."}</Text>
+          value={draft} error={!!error} onChangeText={(value) => {
+            submitted.current = false;
+            setDraft(value);
+            setError("");
+          }} />
+        {action === "balance" && balanceUpdatedAt &&
+          <Text style={styles.caption}>Include your latest purchases. This replaces the balance above.</Text>}
         {!!error && <Text accessibilityRole="alert" style={ui.error}>{error}</Text>}
         <AppButton title={actionTitle(action)} disabled={saveState !== "saved"} onPress={submit} />
-        <AppButton title="Cancel" variant="text" onPress={() => { Keyboard.dismiss(); setAction(null); setError(""); }} />
-      </>}
+        <AppButton title={actionOverride ? "Back to my usual tracking" : otherAction === "balance"
+          ? "Update my balance instead" : "Log a purchase instead"}
+          variant="text" disabled={!balanceUpdatedAt && otherAction === "purchases"}
+          onPress={() => openAction(actionOverride ? primaryAction : otherAction)} />
+      </View>
       {!!notice && <Text accessibilityLiveRegion="polite" style={ui.body}>{notice}</Text>}
       <SaveStatus />
     </View>
@@ -125,11 +138,13 @@ export default function HomeScreen() {
       </View>
       <Text style={styles.caption}>Manage these amounts in Plan.</Text>
     </View>
-    {purchases.length > 0 && <View style={ui.card}>
+    {(purchases.length > 0 || trackingPreference === "purchases") && <View style={ui.card}>
       <AppButton title={showHistory ? "Hide recent purchases" : "View recent purchases"}
-        variant="text" onPress={() => setShowHistory(!showHistory)} />
+        variant="text" onPress={() => setHistoryOverride(!showHistory)} />
       {showHistory && <>
-        <Text style={ui.body}>Your latest five entries. Already included in your balance when logged.</Text>
+        <Text style={ui.body}>{purchases.length
+          ? "Your latest five entries. Already included in your balance when logged."
+          : "Your purchases will appear here as you add them."}</Text>
         {purchases.slice(0, 5).map((purchase) => <View key={purchase.id} style={ui.row}>
           <Text style={[ui.body, styles.date]}>{formatTimestamp(purchase.createdAt)}</Text>
           <Text style={ui.money}>{formatCurrency(purchase.amount)}</Text>
@@ -150,6 +165,7 @@ const styles = StyleSheet.create({
   warning: { backgroundColor: palette.dangerSoft },
   amount: { color: palette.text, fontSize: 42, fontWeight: "700", fontVariant: ["tabular-nums"], flexShrink: 1 },
   balance: { ...ui.money, fontSize: 28 },
+  entry: { gap: 12, borderTopWidth: 1, borderTopColor: palette.border, paddingTop: 20 },
   caption: { color: palette.muted, fontSize: 13, lineHeight: 19 },
   date: { flex: 1 },
 });
