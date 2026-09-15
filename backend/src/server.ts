@@ -28,7 +28,7 @@ app.get<{}, PlanResponse>("/plan", requireAuth, async (_req, res) => {
   const userSupabase = res.locals.supabase;
   const { data, error } = await userSupabase
     .from("plans")
-    .select("balance, savings_goal, bill_items")
+    .select("balance, savings_goal, savings_amount, savings_percentage, bill_items")
     .maybeSingle();
 
   if (error) {
@@ -40,15 +40,21 @@ app.get<{}, PlanResponse>("/plan", requireAuth, async (_req, res) => {
   if (data === null) {
     res.json({
       balance: 0,
-      savingsGoal: 0,
+      savingsAmount: null,
+      savingsPercentage: null,
+      savingsReserved: 0,
       billItems: [],
     });
     return;
   }
 
+  const storedAmount = data.savings_amount === null
+    ? Number(data.savings_goal) || null
+    : Number(data.savings_amount);
   const result = planSchema.safeParse({
     balance: Number(data.balance),
-    savingsGoal: Number(data.savings_goal),
+    savingsAmount: data.savings_percentage === null ? storedAmount : null,
+    savingsPercentage: data.savings_percentage === null ? null : Number(data.savings_percentage),
     billItems: data.bill_items,
   });
 
@@ -74,7 +80,10 @@ app.put<{}, PlanResponse, unknown>("/plan", requireAuth, async (req, res) => {
     {
       user_id: user.id,
       balance: result.data.balance,
-      savings_goal: result.data.savingsGoal,
+      // Keep the legacy derived column populated during the API rollout.
+      savings_goal: result.data.savingsReserved,
+      savings_amount: result.data.savingsAmount,
+      savings_percentage: result.data.savingsPercentage,
       bill_items: result.data.billItems,
       updated_at: new Date().toISOString(),
     },

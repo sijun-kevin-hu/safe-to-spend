@@ -39,3 +39,22 @@ Protected endpoints require this header:
 ```text
 Authorization: Bearer <supabase-access-token>
 ```
+
+## Savings settings and deployment
+
+Apply `sql/001_savings_percentage.sql` in the Supabase SQL editor **before** deploying this API version. It adds nullable `savings_amount` and `savings_percentage` columns and migrates existing nonzero goals into fixed amounts.
+
+The plan contract accepts one savings input: `savingsAmount`, `savingsPercentage`, or neither. Both inputs are nullable, but they cannot both contain values. Responses include the calculated `savingsReserved`, which percentage plans derive from the nonnegative current balance and round to cents.
+
+The database keeps the old `savings_goal` column populated with the calculated reserve during rollout. New clients do not use it as an input.
+
+For rollout compatibility, requests from an older client containing only `savingsGoal` are interpreted as fixed-amount savings.
+
+Frontend changes save automatically through `PUT /plan`; the API still validates the whole plan and uses the authenticated user's RLS policy. There is no database migration runner configured, so deploying code alone does not apply the SQL.
+
+Run contract checks with:
+
+```bash
+npm run build
+node --test tests/plan.test.cjs
+```

@@ -8,6 +8,7 @@ type CurrencyInputProps = {
   accessibilityLabel: string;
   placeholder?: string;
   error?: boolean;
+  symbol?: "$" | "%";
 };
 
 export function CurrencyInput({
@@ -16,6 +17,7 @@ export function CurrencyInput({
   accessibilityLabel,
   placeholder = "0.00",
   error = false,
+  symbol = "$",
 }: CurrencyInputProps) {
   const [focused, setFocused] = useState(false);
   const formatValue = () => {
@@ -29,7 +31,7 @@ export function CurrencyInput({
 
   return (
     <View style={[styles.container, focused && { borderColor: palette.accent, borderWidth: 2 }, error && { borderColor: palette.danger }]}>
-      <Text style={styles.symbol}>$</Text>
+      <Text style={styles.symbol}>{symbol}</Text>
       <TextInput
         accessibilityLabel={accessibilityLabel}
         value={value}

@@ -59,10 +59,11 @@ safe to spend = current balance - upcoming bills - savings goal
 - Build the backend with Node.js, Express, and TypeScript so the mobile app and API use the same language and package-management workflow.
 - Add authentication and user-specific plan storage only after the basic health and plan endpoints work, keeping bank connections and financial credentials out of scope.
 - Use Supabase for hosted PostgreSQL storage and authentication while retaining Express as the custom REST API and business-logic layer.
+- Savings amount and percentage are alternative nullable inputs: fixed amount stores only `savingsAmount`, percentage stores only `savingsPercentage`, and no savings stores both as null. Reject plans that set both. Calculate `savingsReserved` from the selected input rather than storing it as the user's choice. Percentage savings use the nonnegative current balance as the base, rounded to cents, and recalculate when balance changes.
+- Automatic saves require a valid balance and savings setting. Show pending/failure status, retry while mounted, and keep sign-out unavailable until saved. Unsaved edits are not a durable offline queue; keep the app open until saved.
 
 ## Possible Stretch Features
 
-- Support a savings percentage for users with variable income.
 - Warn when a planned purchase would reduce safe-to-spend below a chosen threshold.
 - Schedule a native notification for an upcoming bill or low safe-to-spend amount.
 - Show a lightweight monthly summary without requiring detailed expense entry.
@@ -90,10 +91,10 @@ safe to spend = current balance - upcoming bills - savings goal
 ## Current Progress
 
 - Mobile Supabase sign-up/sign-in, persistent sessions, foreground token refresh, and sign-out implemented. The root authentication gate prevents Home/Plan from mounting while signed out; user changes remount the plan provider to discard prior account state.
-- Mobile plan provider loads through the Vercel API and offers explicit Save plan actions. Failed initial loads block editing and provide retry/sign-out rather than allowing empty data to overwrite a saved plan.
-- Home and Plan share a safe-area-aware, keyboard-aware scrolling layout. Home keeps a result area above the reserve breakdown and balance editor. Plan groups savings and bills, with Add bill as a secondary action and Save plan as the primary action. Save plan and Sign out remain on Plan; saving includes the balance edited on Home.
+- Mobile plan provider loads through the REST API, then automatically saves valid balance, savings, and bill changes after a short pause. Writes are serialized and failed saves retry automatically. Failed initial loads block editing so empty state cannot overwrite a saved plan. Save status appears on Home and Plan; sign-out waits for changes to finish saving.
+- Home and Plan share a safe-area-aware, keyboard-aware scrolling layout. Home keeps a result area above the reserve breakdown and balance editor. Plan opens with Savings and Upcoming bills summary cards; tapping a card opens its own section with Back to Plan navigation. Savings supports a fixed amount or 0–100% of the current nonnegative balance. Bills shows the total and saved items plus an Add bill form. There is no Save button; adding a bill queues it for automatic saving.
 - Shared design tokens, buttons, currency/date formatting, and screen layout keep the frontend consistent. The MVP intentionally uses a light theme, including navigation and status bar. Bill due dates are stored as local calendar dates.
-- Visual refinements include focused/error currency inputs, clearer empty states and optional-reserve messaging, and product-branded web navigation. TypeScript, production web export, and browser checks with mock account/plan data pass (calculation, stale-result clearing, blank/negative balance, navigation, saving, and 320px overflow). Native keyboard, large-text, and real-account end-to-end checks remain pending. ESLint is not installed, so lint remains unverified.
+- Visual refinements include focused/error currency inputs, clearer empty states and optional-reserve messaging, and product-branded web navigation. TypeScript, production web export, and browser checks with mock account/plan data pass (calculation, stale-result clearing, blank/negative balance, navigation, saving, and 320px overflow). The separate Plan sections and autosave have also passed nine focused frontend/backend tests and mock-API browser checks for percentage validation, percentage recalculation on balance changes, reopening, bill addition, and old-API save confirmation. Native keyboard, large-text, and real-account end-to-end checks remain pending. ESLint is not installed, so lint remains unverified.
 - Supabase session persistence is disabled only during static web rendering, where browser storage is unavailable; native and browser session persistence remain enabled.
 - Production API at https://safe-to-spend-chi.vercel.app verified: health returns 200 and unauthenticated plan access returns 401. Authenticated two-account and physical-device testing remain pending.
 - Mobile configuration uses the root `.env.example`; Expo needs EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY in its own root environment file. No secret/service-role key belongs in the app.
@@ -135,11 +136,13 @@ safe to spend = current balance - upcoming bills - savings goal
 
 ## Next Steps
 
+The new savings-input API is implemented locally. Apply `backend/sql/001_savings_percentage.sql` to Supabase before deploying the updated backend. This migration and deployment have not been performed in this task. Legacy fixed-amount plans remain compatible; new savings inputs require the updated API and are not reported as saved if an older API drops the setting.
+
 1. Verify sign-up/sign-in, saving, reopening the app, and separate accounts on a physical device; capture app/backend evidence. Deployment and mobile integration are implemented, but authenticated end-to-end verification remains pending.
 2. Complete and document the two-way partner collaboration workflow: each person clones, builds, modifies, tests, deploys, and commits the other's code, then fetches and runs the returned changes on their device.
 3. Finish the individual submission: setup instructions, annotated references and AI use, debugging notes, screenshots or video, repository/API URLs, Git history, and collaboration lessons.
 
-Local persistence, advanced savings strategies, notifications, further UI refinement, and additional interview testing are deferred until the required assignment workflow is complete.
+Durable offline persistence, notifications, further UI refinement, and additional interview testing are deferred until the required assignment workflow is complete.
 
 ## Development Approach
 

@@ -1,14 +1,10 @@
+import type { PlanInput, StoredPlan } from "./plan";
 import type { Bill } from "@/types/bill";
 import { supabase } from "./supabase";
 
-export type StoredPlan = {
-  balance: number;
-  savingsGoal: number;
-  billItems: Bill[];
-};
 export async function requestPlan(
   userId: string,
-  plan?: StoredPlan,
+  plan?: PlanInput,
 ): Promise<StoredPlan> {
   if (!supabase) throw new Error("Authentication is not configured.");
   const { data, error } = await supabase.auth.getSession();
@@ -39,7 +35,6 @@ export async function requestPlan(
     if (
       !value ||
       !Number.isFinite(value.balance) ||
-      !Number.isFinite(value.savingsGoal) ||
       !Array.isArray(value.billItems) ||
       !value.billItems.every(
         (bill: Bill) =>
@@ -51,7 +46,37 @@ export async function requestPlan(
       )
     )
       throw new Error("The server returned an invalid plan.");
-    return value;
+    const legacyResponse = !("savingsAmount" in value) && !("savingsReserved" in value);
+    const savingsAmount = legacyResponse ? value.savingsGoal : value.savingsAmount ?? null;
+    const savingsPercentage = value.savingsPercentage ?? null;
+    const savingsReserved = legacyResponse ? value.savingsGoal : value.savingsReserved;
+    const validAmount = savingsAmount === null || (Number.isFinite(savingsAmount) && savingsAmount >= 0);
+    const validPercentage = savingsPercentage === null || (
+      Number.isFinite(savingsPercentage) && savingsPercentage >= 0 && savingsPercentage <= 100
+    );
+    if (
+      !validAmount ||
+      !validPercentage ||
+      !Number.isFinite(savingsReserved) ||
+      savingsReserved < 0 ||
+      (savingsAmount !== null && savingsPercentage !== null)
+    ) {
+      throw new Error("The server returned an invalid savings setting.");
+    }
+    if (plan && (
+      legacyResponse ||
+      savingsAmount !== plan.savingsAmount ||
+      savingsPercentage !== plan.savingsPercentage
+    )) {
+      throw new Error("The server did not save your savings setting. Please update the API.");
+    }
+    return {
+      balance: value.balance,
+      savingsAmount,
+      savingsPercentage,
+      savingsReserved,
+      billItems: value.billItems,
+    };
   } finally {
     clearTimeout(timeout);
   }

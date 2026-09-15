@@ -1,3 +1,4 @@
+import { SaveStatus } from "@/components/plan/save-status";
 import { AppButton } from "@/components/app-button";
 import { CurrencyInput } from "@/components/currency-input";
 import { Screen } from "@/components/screen";
@@ -8,12 +9,12 @@ import { useState } from "react";
 import { Keyboard, StyleSheet, Text, View } from "react-native";
 
 export default function HomeScreen() {
-  const { balance, setBalance, savingsGoal, billItems } = usePlan();
+  const { balance, setBalance, savingsReserved, validationError, billItems } = usePlan();
   const [error, setError] = useState("");
   // Store the inputs used for a calculation so edited plans never show a stale answer.
   const [calculatedInputs, setCalculatedInputs] = useState<string | null>(null);
   const billsTotal = billItems.reduce((total, bill) => total + bill.amount, 0);
-  const savings = Number(savingsGoal || 0);
+  const savings = savingsReserved;
   const inputKey = JSON.stringify([
     balance.trim() ? Number(balance) : null,
     savings,
@@ -39,7 +40,7 @@ export default function HomeScreen() {
   function calculate() {
     Keyboard.dismiss();
     if (!balance.trim()) return setError("Enter your current balance.");
-    if (![Number(balance), savings].every(Number.isFinite) || savings < 0) {
+    if (validationError || ![Number(balance), savings].every(Number.isFinite) || savings < 0) {
       return setError("Enter a valid balance and nonnegative savings amount.");
     }
     setError("");
@@ -74,7 +75,7 @@ export default function HomeScreen() {
         </View>
         {!!error && <Text accessibilityRole="alert" style={ui.error}>{error}</Text>}
         <AppButton title="Calculate safe to spend" onPress={calculate} />
-        <Text style={styles.caption}>Balance changes are saved with Save plan in Plan.</Text>
+        <SaveStatus />
       </View>
     </Screen>
   );
