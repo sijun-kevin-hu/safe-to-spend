@@ -1,9 +1,36 @@
 import type { Bill } from "@/types/bill";
 
+export type TrackingPreference = "purchases" | "balance";
+export type Purchase = { id: string; amount: number; createdAt: string };
+export type TrackingState = {
+  balance: number;
+  balanceUpdatedAt: string | null;
+  purchases: Purchase[];
+};
+
+// The balance already includes logged purchases. A check-in replaces it outright.
+export function updateTrackingBalance(state: TrackingState, balance: number, now: string): TrackingState {
+  if (!Number.isFinite(balance)) throw new Error("Enter a valid balance.");
+  return { ...state, balance: Math.round(balance * 100) / 100, balanceUpdatedAt: now };
+}
+
+export function recordPurchase(state: TrackingState, purchase: Purchase): TrackingState {
+  if (!Number.isFinite(purchase.amount) || purchase.amount < 0.01) {
+    throw new Error("Enter a purchase amount of at least $0.01.");
+  }
+  if (state.purchases.some((item) => item.id === purchase.id)) return state;
+  const balance = Math.round((state.balance - purchase.amount) * 100) / 100;
+  if (!Number.isFinite(balance)) throw new Error("Enter a smaller purchase amount.");
+  return { ...state, balance, purchases: [purchase, ...state.purchases] };
+}
+
 export type SavingsMode = "amount" | "percentage";
 
 export type PlanInput = {
   balance: number;
+  trackingPreference: TrackingPreference | null;
+  balanceUpdatedAt: string | null;
+  purchases: Purchase[];
   savingsAmount: number | null;
   savingsPercentage: number | null;
   billItems: Bill[];

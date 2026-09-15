@@ -3,6 +3,14 @@ import { billSchema } from "./bill";
 
 const planInputSchema = z.object({
   balance: z.number(),
+  trackingPreference: z.enum(["purchases", "balance"]).nullable().default(null),
+  balanceUpdatedAt: z.iso.datetime().nullable().default(null),
+  purchases: z.array(z.object({
+    id: z.string().min(1).max(100),
+    amount: z.number().min(0.01),
+    createdAt: z.iso.datetime(),
+  })).refine((items) => new Set(items.map((item) => item.id)).size === items.length,
+    { message: "Purchase IDs must be unique." }).default([]),
   savingsAmount: z.number().nonnegative().nullable().default(null),
   savingsPercentage: z.number().min(0).max(100).nullable().default(null),
   billItems: z.array(billSchema),

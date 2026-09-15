@@ -134,3 +134,32 @@ test('disposing cancels queued writes and prevents an old account from retrying'
   await wait(20);
   assert.deepEqual(writes, [1]);
 });
+
+const { recordPurchase, updateTrackingBalance } = loadSource('src/lib/plan.ts');
+test('purchase logging, balance refresh, and later purchases never double count', () => {
+  const initial = { balance: 100, balanceUpdatedAt: null, purchases: [] };
+  const now = '2026-09-15T12:00:00.000Z';
+  const purchase = { id: 'one', amount: 12.34, createdAt: now };
+  const logged = recordPurchase(initial, purchase);
+  assert.equal(logged.balance, 87.66);
+  assert.equal(recordPurchase(logged, purchase).balance, 87.66);
+  const refreshed = updateTrackingBalance(logged, 80, now);
+  assert.equal(refreshed.balance, 80);
+  assert.equal(refreshed.purchases.length, 1);
+  assert.equal(refreshed.balanceUpdatedAt, now);
+  const next = recordPurchase(refreshed, { ...purchase, id: 'two', amount: 0.1 });
+  assert.equal(next.balance, 79.9);
+  assert.equal(next.balanceUpdatedAt, now, 'logging does not pretend the balance was checked');
+  assert.equal(next.purchases.length, 2);
+});
+
+test('zero and negative balances work, while invalid purchases are rejected', () => {
+  const state = { balance: 1, balanceUpdatedAt: null, purchases: [] };
+  assert.equal(updateTrackingBalance(state, 0, 'now').balance, 0);
+  assert.equal(updateTrackingBalance(state, -10, 'now').balance, -10);
+  assert.throws(() => updateTrackingBalance(state, Infinity, 'now'));
+  for (const amount of [0, -1, NaN, Infinity]) {
+    assert.throws(() => recordPurchase(state, { id: 'one', amount, createdAt: 'now' }));
+  }
+  assert.equal(recordPurchase(state, { id: 'one', amount: 2, createdAt: 'now' }).balance, -1);
+});

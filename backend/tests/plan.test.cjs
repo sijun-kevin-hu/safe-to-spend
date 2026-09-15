@@ -49,3 +49,23 @@ test('API allows no savings but rejects two savings methods', () => {
     savingsPercentage: 10,
   }).success, false);
 });
+
+test('tracking preferences and purchase history survive API validation', () => {
+  const tracking = {
+    trackingPreference: 'purchases',
+    balanceUpdatedAt: '2026-09-15T12:00:00.000Z',
+    purchases: [{ id: 'one', amount: 12.34, createdAt: '2026-09-15T12:00:00.000Z' }],
+  };
+  const plan = planSchema.parse({ ...base, ...tracking });
+  assert.equal(plan.trackingPreference, 'purchases');
+  assert.deepEqual(plan.purchases, tracking.purchases);
+  assert.equal(plan.balance, base.balance, 'already-accounted purchases are not subtracted by the API');
+  assert.equal(planSchema.parse(base).trackingPreference, null);
+  assert.deepEqual(planSchema.parse(base).purchases, []);
+  for (const invalid of [
+    { trackingPreference: 'other' },
+    { balanceUpdatedAt: 'yesterday' },
+    { purchases: [{ ...tracking.purchases[0], amount: -1 }] },
+    { purchases: [tracking.purchases[0], tracking.purchases[0]] },
+  ]) assert.equal(planSchema.safeParse({ ...base, ...tracking, ...invalid }).success, false);
+});

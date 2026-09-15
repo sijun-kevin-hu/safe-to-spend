@@ -42,10 +42,16 @@ safe to spend = current balance - upcoming bills - savings goal
 - Complex expense categories
 - Full accounting features
 - AI-generated financial advice
-- Detailed manual transaction tracking
+- Detailed categories, purchase editing, and full transaction reports
 - A separate planned-purchase calculator, unless user testing shows that it reduces effort enough to justify another interaction
 
 ## Product Decisions
+
+- Ask how users want to keep their balance up to date after their first authenticated sign-in: Log purchases or Update my balance. Existing accounts without a preference see the same one-time choice. Save the preference with their plan and allow changes in Plan → Balance tracking.
+- Both Home actions remain available. The preference determines which action is prominent once a balance has been confirmed; a first balance check-in comes first for everyone.
+- Logging a purchase deducts its amount from the working balance once and stores the entry. Updating the balance replaces the working balance, retains purchase history, and never reapplies old purchases. Show when the balance was last checked separately from the latest purchase timestamp.
+- Home calculates spending room immediately from committed balance, bills, and savings. Balance drafts require Update balance; they do not change the saved plan while typing. Percentage savings retain their existing behavior of recalculating from the current balance.
+- The lightweight purchase view shows the latest five entries. Purchases are stored in the plan JSON for this MVP; full history navigation, editing, refunds, and concurrent multi-device conflict resolution remain out of scope.
 
 - Keep the safe-to-spend amount immediately visible as the primary experience.
 - Do not require users to enter each purchase or navigate through a separate purchase-checking flow.
@@ -55,7 +61,7 @@ safe to spend = current balance - upcoming bills - savings goal
 - Keep the Home screen focused on the current safe-to-spend amount, a short calculation breakdown, and quick balance updates.
 - Put individual bills, savings strategies, and other advanced controls in a separate Plan area rather than presenting every form on Home.
 - If optional reserves are missing, explicitly tell the user that the result currently uses only the information provided.
-- Fast-track the coursework submission: stop adding product features after the basic Home/Plan flow and prioritize the required physical-device, REST backend, Git, partner, and documentation evidence.
+- Keep additions focused on the approved Home/Plan flow and optional tracking preference; prioritize physical-device, REST backend, Git, partner, and documentation evidence afterward.
 - Build the backend with Node.js, Express, and TypeScript so the mobile app and API use the same language and package-management workflow.
 - Add authentication and user-specific plan storage only after the basic health and plan endpoints work, keeping bank connections and financial credentials out of scope.
 - Use Supabase for hosted PostgreSQL storage and authentication while retaining Express as the custom REST API and business-logic layer.
@@ -89,6 +95,8 @@ safe to spend = current balance - upcoming bills - savings goal
 - Git and GitHub
 
 ## Current Progress
+
+- Tracking onboarding, changeable Plan preference, amount-only purchase entry, balance replacement, recent purchases, and separate balance-check/purchase timestamps are implemented. Home calculates from committed values immediately. Verified with 16 focused tests (10 frontend/API-client, 6 backend), frontend TypeScript, backend build, web export, and synthetic-account browser checks for onboarding, deduction, balance replacement, preference changes, reload persistence, zero-purchase rejection, keyboard focus, and 320px overflow. Production database writes and physical-device behavior remain unverified for this flow.
 
 - Mobile Supabase sign-up/sign-in, persistent sessions, foreground token refresh, and sign-out implemented. The root authentication gate prevents Home/Plan from mounting while signed out; user changes remount the plan provider to discard prior account state.
 - Mobile plan provider loads through the REST API, then automatically saves valid balance, savings, and bill changes after a short pause. Writes are serialized and failed saves retry automatically. Failed initial loads block editing so empty state cannot overwrite a saved plan. Save status appears on Home and Plan; sign-out waits for changes to finish saving.
@@ -135,6 +143,8 @@ safe to spend = current balance - upcoming bills - savings goal
 - A later Vercel deployment reported TS2688 for Node types. Changing dependency installation did not resolve it. Full logs showed the project build succeeded and Vercel's separate TypeScript 7 transpilation failed; omitted dependencies were not established as the cause. The backend compiler is now pinned to TypeScript 5.9.3 as a compatibility workaround. Local type checks and production build pass; cloud redeployment remains pending.
 
 ## Next Steps
+
+The tracking preference and purchase flow are implemented locally. Apply `backend/sql/002_tracking_preference.sql` after migration 001, then deploy the updated API before using the new frontend. Neither migration nor deployment was performed as part of this change. Client save confirmation rejects older APIs that omit tracking data. Existing plans keep their data and receive no invented balance-check timestamp.
 
 The new savings-input API is implemented locally. Apply `backend/sql/001_savings_percentage.sql` to Supabase before deploying the updated backend. This migration and deployment have not been performed in this task. Legacy fixed-amount plans remain compatible; new savings inputs require the updated API and are not reported as saved if an older API drops the setting.
 

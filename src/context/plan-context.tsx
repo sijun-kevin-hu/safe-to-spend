@@ -3,6 +3,10 @@ import { palette, ui } from "@/constants/design";
 import { Autosave, type SaveState } from "@/lib/autosave";
 import {
   calculateSavingsReserved,
+  recordPurchase,
+  updateTrackingBalance,
+  type TrackingPreference,
+  type TrackingState,
   savingsError,
   savingsSetting,
   type PlanInput,
@@ -21,7 +25,12 @@ import { useAuth } from "./auth-context";
 type PlanContextValue = {
   saveState: SaveState;
   balance: string;
-  setBalance: Dispatch<SetStateAction<string>>;
+  trackingPreference: TrackingPreference | null;
+  setTrackingPreference: Dispatch<SetStateAction<TrackingPreference | null>>;
+  balanceUpdatedAt: string | null;
+  purchases: TrackingState["purchases"];
+  updateBalance: (value: number) => void;
+  addPurchase: (amount: number) => void;
   savingsMode: SavingsMode;
   savingsValue: string;
   setSavingsValue: Dispatch<SetStateAction<string>>;
@@ -73,7 +82,25 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
   initialPlan: StoredPlan;
   userId: string;
 }>) {
-  const [balance, setBalance] = useState(String(initialPlan.balance));
+  const [trackingPreference, setTrackingPreference] = useState(initialPlan.trackingPreference);
+  const [tracking, setTracking] = useState<TrackingState>({
+    balance: initialPlan.balance,
+    balanceUpdatedAt: initialPlan.balanceUpdatedAt,
+    purchases: initialPlan.purchases,
+  });
+  const balance = String(tracking.balance);
+  function updateBalance(value: number) {
+    const now = new Date().toISOString();
+    setTracking((current) => updateTrackingBalance(current, value, now));
+  }
+  function addPurchase(amount: number) {
+    const purchase = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      amount: Math.round(amount * 100) / 100,
+      createdAt: new Date().toISOString(),
+    };
+    setTracking((current) => recordPurchase(current, purchase));
+  }
   const [savingsMode, setSavingsMode] = useState<SavingsMode>(
     initialPlan.savingsPercentage === null ? "amount" : "percentage",
   );
@@ -93,6 +120,9 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
   );
   const initialInput: PlanInput = {
     balance: initialPlan.balance,
+    trackingPreference: initialPlan.trackingPreference,
+    balanceUpdatedAt: initialPlan.balanceUpdatedAt,
+    purchases: initialPlan.purchases,
     savingsAmount: initialPlan.savingsAmount,
     savingsPercentage: initialPlan.savingsPercentage,
     billItems: initialPlan.billItems,
@@ -108,6 +138,9 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
   useEffect(() => {
     queue.current?.update(validBalance && !validationError && Number.isFinite(savingsReserved) ? {
       balance: Number(balance),
+      trackingPreference,
+      balanceUpdatedAt: tracking.balanceUpdatedAt,
+      purchases: tracking.purchases,
       savingsAmount,
       savingsPercentage,
       billItems,
@@ -115,6 +148,8 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
   }, [
     balance,
     validBalance,
+    trackingPreference,
+    tracking,
     savingsAmount,
     savingsPercentage,
     savingsReserved,
@@ -132,7 +167,9 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
 
   return (
     <PlanContext.Provider value={{
-      saveState, balance, setBalance, savingsMode, savingsValue, setSavingsValue,
+      saveState, balance, trackingPreference, setTrackingPreference,
+      balanceUpdatedAt: tracking.balanceUpdatedAt, purchases: tracking.purchases,
+      updateBalance, addPurchase, savingsMode, savingsValue, setSavingsValue,
       changeSavingsMode, savingsReserved, validationError, billItems, setBillItems,
     }}>
       {children}

@@ -6,13 +6,14 @@ type AppButtonProps = {
   title: string;
   onPress: () => void;
   disabled?: boolean;
+  selected?: boolean;
   variant?: "primary" | "secondary" | "text";
 };
 
-export function AppButton({ title, onPress, disabled = false, variant = "primary" }: AppButtonProps) {
+export function AppButton({ title, onPress, disabled = false, selected, variant = "primary" }: AppButtonProps) {
   const [focused, setFocused] = useState(false);
   return (
-    <Pressable accessibilityRole="button" accessibilityState={{ disabled }}
+    <Pressable accessibilityRole="button" accessibilityState={{ disabled, ...(selected === undefined ? {} : { selected }) }}
       disabled={disabled} onPress={onPress} onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       style={({ pressed }) => [styles.button, styles[variant],

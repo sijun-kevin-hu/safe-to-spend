@@ -1,3 +1,4 @@
+import { TrackingPreferencePicker } from "@/components/tracking-preference";
 import { AppButton } from "@/components/app-button";
 import { BillsSection } from "@/components/plan/bills-section";
 import { SavingsSection } from "@/components/plan/savings-section";
@@ -11,11 +12,11 @@ import { useEffect, useState } from "react";
 import { BackHandler, Keyboard, Pressable, StyleSheet, Text, View } from "react-native";
 import { useIsFocused } from "expo-router";
 
-type Section = "overview" | "savings" | "bills";
+type Section = "overview" | "savings" | "bills" | "tracking";
 
 export default function PlanScreen() {
   const [section, setSection] = useState<Section>("overview");
-  const { savingsReserved, savingsMode, savingsValue, billItems } = usePlan();
+  const { trackingPreference, setTrackingPreference, savingsReserved, savingsMode, savingsValue, billItems } = usePlan();
   const isFocused = useIsFocused();
   const billsTotal = billItems.reduce((total, bill) => total + bill.amount, 0);
 
@@ -51,6 +52,16 @@ export default function PlanScreen() {
           description={`${billItems.length} ${billItems.length === 1 ? "bill" : "bills"} · View and add bills`}
           onPress={() => openSection("bills")}
         />
+        <PlanCard title="Balance tracking"
+          amount={trackingPreference === "purchases" ? "Log purchases" : "Update my balance"}
+          description="Change your preferred home action"
+          onPress={() => openSection("tracking")} />
+      </>}
+      {section === "tracking" && <>
+        <Text accessibilityRole="header" style={ui.title}>Balance tracking</Text>
+        <Text style={ui.body}>Choose your main action on Home. Both options are always available.</Text>
+        <TrackingPreferencePicker value={trackingPreference} onChange={setTrackingPreference} />
+        <Text style={ui.body}>Changing this preference keeps your balance and purchases.</Text>
       </>}
       {section === "savings" && <SavingsSection />}
       {section === "bills" && <BillsSection />}

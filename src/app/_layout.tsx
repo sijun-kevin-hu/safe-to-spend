@@ -1,3 +1,4 @@
+import { TrackingOnboarding } from "@/components/tracking-preference";
 import { AuthScreen } from "@/components/auth-screen";
 import { AuthProvider, useAuth } from "@/context/auth-context";
 import { DefaultTheme, ThemeProvider } from "expo-router";
@@ -41,7 +42,7 @@ function AuthenticatedApp() {
     );
   return (
     <PlanProvider key={session.user.id}>
-      <AppTabs />
+      <TrackingOnboarding><AppTabs /></TrackingOnboarding>
     </PlanProvider>
   );
 }

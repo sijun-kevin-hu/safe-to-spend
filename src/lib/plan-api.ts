@@ -1,4 +1,4 @@
-import type { PlanInput, StoredPlan } from "./plan";
+import type { PlanInput, Purchase, StoredPlan } from "./plan";
 import type { Bill } from "@/types/bill";
 import { supabase } from "./supabase";
 
@@ -70,8 +70,32 @@ export async function requestPlan(
     )) {
       throw new Error("The server did not save your savings setting. Please update the API.");
     }
+    const trackingPreference = value.trackingPreference ?? null;
+    const balanceUpdatedAt = value.balanceUpdatedAt ?? null;
+    const purchases = value.purchases ?? [];
+    if (
+      ![null, "purchases", "balance"].includes(trackingPreference) ||
+      (balanceUpdatedAt !== null && (typeof balanceUpdatedAt !== "string" || !Number.isFinite(Date.parse(balanceUpdatedAt)))) ||
+      !Array.isArray(purchases) || !purchases.every((item: Purchase) =>
+        item && typeof item.id === "string" && Number.isFinite(item.amount) && item.amount >= 0.01 &&
+        typeof item.createdAt === "string" && Number.isFinite(Date.parse(item.createdAt))) ||
+      new Set(purchases.map((item: Purchase) => item.id)).size !== purchases.length
+    ) throw new Error("The server returned invalid tracking data.");
+    if (plan && (
+      !("trackingPreference" in value) ||
+      trackingPreference !== plan.trackingPreference ||
+      balanceUpdatedAt !== plan.balanceUpdatedAt ||
+      value.balance !== plan.balance ||
+      (purchases.length !== plan.purchases.length || purchases.some((item: Purchase, index: number) => {
+        const sent = plan.purchases[index];
+        return item.id !== sent.id || item.amount !== sent.amount || item.createdAt !== sent.createdAt;
+      }))
+    )) throw new Error("The server did not save your balance or tracking preference. Please update the API.");
     return {
       balance: value.balance,
+      trackingPreference,
+      balanceUpdatedAt,
+      purchases,
       savingsAmount,
       savingsPercentage,
       savingsReserved,
