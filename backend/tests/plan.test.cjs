@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { planSchema } = require('../dist/schemas/plan');
+const { profileSchema } = require('../dist/schemas/profile');
 const base = {
   balance: 1234.56,
   savingsAmount: 75,
@@ -76,4 +77,19 @@ test('purchase descriptions are optional, trimmed, and limited to 120 characters
   assert.equal(planSchema.parse({ ...base, purchases: [{ ...purchase, note: ' Coffee ' }] }).purchases[0].note, 'Coffee');
   assert.equal(planSchema.safeParse({ ...base, purchases: [purchase] }).success, true);
   assert.equal(planSchema.safeParse({ ...base, purchases: [{ ...purchase, note: 'x'.repeat(121) }] }).success, false);
+});
+
+test('profiles require a trimmed display name and valid non-future date of birth', () => {
+  assert.deepEqual(profileSchema.parse({
+    displayName: '  Kevin Hu  ',
+    dateOfBirth: '2000-02-29',
+  }), {
+    displayName: 'Kevin Hu',
+    dateOfBirth: '2000-02-29',
+  });
+  for (const profile of [
+    { displayName: 'K', dateOfBirth: '2000-01-01' },
+    { displayName: 'Kevin Hu', dateOfBirth: '2000-02-30' },
+    { displayName: 'Kevin Hu', dateOfBirth: '2999-01-01' },
+  ]) assert.equal(profileSchema.safeParse(profile).success, false);
 });

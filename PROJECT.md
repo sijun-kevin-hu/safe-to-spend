@@ -96,6 +96,8 @@ safe to spend = current balance - upcoming bills - savings goal
 
 ## Current Progress
 
+- New authenticated accounts now complete a themed profile step before plan onboarding. The app collects a full name and date of birth, saves them as `profiles.display_name` and `profiles.date_of_birth` through authenticated `/profile` endpoints, and reuses the existing privacy-first design system. Apply migration 005 and deploy the updated API before testing this flow with a real account.
+
 - Tracking preferences now belong to `profiles` without changing the mobile API contract. The updated API reads and writes profiles, and migration 004 removes the unused plan column. Existing preference data is intentionally not migrated. Local type checks, builds, and contract tests pass; live profile reads and writes remain unverified.
 
 - Purchase tracking now uses a dedicated Home screen with logged-today totals, quick amount/optional-description entry, and visible day-grouped history (20 at a time). Balance check-in keeps its existing Home and opens the complete purchase UI on demand with return navigation. Validated through 17 tests, TypeScript, backend build, web export, and synthetic browser checks for described purchase saving/reload, distinct preference routing, optional tracker navigation, and 320px overflow. Physical-device checks remain pending. Redeploy the API for purchase descriptions; no additional SQL migration beyond 002 is needed because purchases already use JSON storage.

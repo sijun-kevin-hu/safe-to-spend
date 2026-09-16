@@ -1,4 +1,4 @@
-import { DueDateField } from "@/components/plan/due-date-field";
+import { CalendarDateField } from "@/components/calendar-date-field";
 import { AppButton } from "@/components/app-button";
 import { palette, ui } from "@/constants/design";
 import { formatCurrency, formatBillDate, toDateOnly } from "@/lib/format";
@@ -17,6 +17,8 @@ import {
 
 export function BillsSection() {
   const { billItems, setBillItems } = usePlan();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   const billsTotal = billItems.reduce((total, bill) => total + bill.amount, 0);
 
@@ -139,7 +141,14 @@ export function BillsSection() {
         />
 
         <Text style={styles.fieldLabel}>Due date</Text>
-        <DueDateField value={billDueDate} onChange={setBillDueDate} />
+        <CalendarDateField
+          value={billDueDate}
+          onChange={setBillDueDate}
+          accessibilityLabel="Choose a due date"
+          placeholder="Choose a due date"
+          minimumDate={today}
+          initialDate={today}
+        />
 
         {billError !== "" && (
           <Text accessibilityRole="alert" style={ui.error}>{billError}</Text>

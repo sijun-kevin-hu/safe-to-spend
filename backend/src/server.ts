@@ -1,5 +1,6 @@
 import { requireAuth } from "./middleware/require-auth";
 import { planSchema } from "./schemas/plan";
+import { profileSchema, type Profile } from "./schemas/profile";
 import type { Plan } from "./types/plan";
 
 import express = require("express");
@@ -10,6 +11,7 @@ const port = Number(process.env.PORT) || 3000;
 
 type PlanResponse = Plan | { error: string };
 type AuthResponse = { id: string; email: string | null } | { error: string };
+type ProfileResponse = Profile | null | { error: string };
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
@@ -22,6 +24,66 @@ app.get<{}, AuthResponse>("/auth/me", requireAuth, (_req, res) => {
     id: user.id,
     email: user.email ?? null,
   });
+});
+
+app.get<{}, ProfileResponse>("/profile", requireAuth, async (_req, res) => {
+  const user = res.locals.user;
+  const userSupabase = res.locals.supabase;
+  const { data, error } = await userSupabase
+    .from("profiles")
+    .select("display_name, date_of_birth")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Unable to load profile from Supabase:", error);
+    res.status(500).json({ error: "Unable to load profile." });
+    return;
+  }
+
+  if (!data?.display_name || !data.date_of_birth) {
+    res.json(null);
+    return;
+  }
+
+  const result = profileSchema.safeParse({
+    displayName: data.display_name,
+    dateOfBirth: data.date_of_birth,
+  });
+  if (!result.success) {
+    console.error("Stored profile failed validation:", result.error);
+    res.status(500).json({ error: "Stored profile is invalid." });
+    return;
+  }
+
+  res.json(result.data);
+});
+
+app.put<{}, ProfileResponse, unknown>("/profile", requireAuth, async (req, res) => {
+  const result = profileSchema.safeParse(req.body);
+  if (!result.success) {
+    res.status(400).json({ error: "Enter a valid full name and date of birth." });
+    return;
+  }
+
+  const user = res.locals.user;
+  const userSupabase = res.locals.supabase;
+  const { error } = await userSupabase.from("profiles").upsert(
+    {
+      id: user.id,
+      display_name: result.data.displayName,
+      date_of_birth: result.data.dateOfBirth,
+    },
+    { onConflict: "id" },
+  );
+
+  if (error) {
+    console.error("Unable to save profile to Supabase:", error);
+    res.status(500).json({ error: "Unable to save profile." });
+    return;
+  }
+
+  res.json(result.data);
 });
 
 app.get<{}, PlanResponse>("/plan", requireAuth, async (_req, res) => {

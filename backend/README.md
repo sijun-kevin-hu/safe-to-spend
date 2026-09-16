@@ -31,6 +31,8 @@ The API runs at `http://localhost:3000` by default.
 
 - `GET /health` returns the service status.
 - `GET /auth/me` validates a Supabase bearer token and returns the current user.
+- `GET /profile` returns the authenticated user's completed identity profile or `null`.
+- `PUT /profile` validates and saves the authenticated user's display name and date of birth.
 - `GET /plan` returns the authenticated user's stored plan or an empty plan.
 - `PUT /plan` validates and saves the authenticated user's plan.
 
@@ -50,6 +52,7 @@ Tracking preferences now belong to `profiles`, while balances and purchase histo
 2. Apply `sql/003_profiles.sql` once to create and backfill profiles.
 3. Deploy this API version, which reads and writes preferences through `profiles`.
 4. Apply `sql/004_drop_plan_tracking_preference.sql` to remove the unused column from `plans`.
+5. Apply `sql/005_profile_identity.sql` before deploying the profile-onboarding client. It adds the date-of-birth field and identity validation constraints.
 
 This project does not preserve tracking preferences previously stored in `plans`.
 
