@@ -25,22 +25,36 @@ app.get<{}, AuthResponse>("/auth/me", requireAuth, (_req, res) => {
 });
 
 app.get<{}, PlanResponse>("/plan", requireAuth, async (_req, res) => {
+  const user = res.locals.user;
   const userSupabase = res.locals.supabase;
-  const { data, error } = await userSupabase
-    .from("plans")
-    .select("balance, savings_goal, savings_amount, savings_percentage, bill_items, tracking_preference, balance_updated_at, purchases")
-    .maybeSingle();
+  const [planResult, profileResult] = await Promise.all([
+    userSupabase
+      .from("plans")
+      .select("balance, savings_goal, savings_amount, savings_percentage, bill_items, balance_updated_at, purchases")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    userSupabase
+      .from("profiles")
+      .select("tracking_preference")
+      .eq("id", user.id)
+      .maybeSingle(),
+  ]);
 
-  if (error) {
-    console.error("Unable to load plan from Supabase:", error);
+  if (planResult.error || profileResult.error) {
+    console.error("Unable to load plan from Supabase:", {
+      planError: planResult.error,
+      profileError: profileResult.error,
+    });
     res.status(500).json({ error: "Unable to load plan." });
     return;
   }
 
-  if (data === null) {
+  const trackingPreference = profileResult.data?.tracking_preference ?? null;
+
+  if (planResult.data === null) {
     res.json({
       balance: 0,
-      trackingPreference: null,
+      trackingPreference,
       balanceUpdatedAt: null,
       purchases: [],
       savingsAmount: null,
@@ -51,12 +65,13 @@ app.get<{}, PlanResponse>("/plan", requireAuth, async (_req, res) => {
     return;
   }
 
+  const data = planResult.data;
   const storedAmount = data.savings_amount === null
     ? Number(data.savings_goal) || null
     : Number(data.savings_amount);
   const result = planSchema.safeParse({
     balance: Number(data.balance),
-    trackingPreference: data.tracking_preference,
+    trackingPreference,
     balanceUpdatedAt: data.balance_updated_at ? new Date(data.balance_updated_at).toISOString() : null,
     purchases: data.purchases,
     savingsAmount: data.savings_percentage === null ? storedAmount : null,
@@ -82,7 +97,12 @@ app.put<{}, PlanResponse, unknown>("/plan", requireAuth, async (req, res) => {
 
   const user = res.locals.user;
   const userSupabase = res.locals.supabase;
-  const { error } = await userSupabase.from("plans").upsert(
+  const includesTrackingPreference = Boolean(
+    req.body &&
+    typeof req.body === "object" &&
+    "trackingPreference" in req.body,
+  );
+  const { error: planError } = await userSupabase.from("plans").upsert(
     {
       user_id: user.id,
       balance: result.data.balance,
@@ -91,9 +111,8 @@ app.put<{}, PlanResponse, unknown>("/plan", requireAuth, async (req, res) => {
       savings_amount: result.data.savingsAmount,
       savings_percentage: result.data.savingsPercentage,
       bill_items: result.data.billItems,
-      // Older clients omit these fields; do not erase preferences or purchase history.
-      ...(req.body && typeof req.body === "object" && "trackingPreference" in req.body ? {
-        tracking_preference: result.data.trackingPreference,
+      // Older clients omit these fields; do not erase tracking history.
+      ...(includesTrackingPreference ? {
         balance_updated_at: result.data.balanceUpdatedAt,
         purchases: result.data.purchases,
       } : {}),
@@ -102,10 +121,26 @@ app.put<{}, PlanResponse, unknown>("/plan", requireAuth, async (req, res) => {
     { onConflict: "user_id" },
   );
 
-  if (error) {
-    console.error("Unable to save plan to Supabase:", error);
+  if (planError) {
+    console.error("Unable to save plan to Supabase:", planError);
     res.status(500).json({ error: "Unable to save plan." });
     return;
+  }
+
+  if (includesTrackingPreference) {
+    const { error: profileError } = await userSupabase.from("profiles").upsert(
+      {
+        id: user.id,
+        tracking_preference: result.data.trackingPreference,
+      },
+      { onConflict: "id" },
+    );
+
+    if (profileError) {
+      console.error("Unable to save profile to Supabase:", profileError);
+      res.status(500).json({ error: "Unable to save tracking preference." });
+      return;
+    }
   }
 
   res.json(result.data);

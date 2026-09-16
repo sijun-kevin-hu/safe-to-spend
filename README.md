@@ -87,10 +87,10 @@ Production API: [https://safe-to-spend-chi.vercel.app](https://safe-to-spend-chi
 
 - `GET /health` checks service availability.
 - `GET /auth/me` returns the authenticated user.
-- `GET /plan` retrieves the authenticated user's plan.
-- `PUT /plan` validates and saves the authenticated user's plan.
+- `GET /plan` retrieves the authenticated user's plan and tracking preference.
+- `PUT /plan` validates and saves plan data while storing the tracking preference in the user's profile.
 
-Protected endpoints require a Supabase access token. Plan data is separated by user through Supabase Row Level Security.
+Protected endpoints require a Supabase access token. Plan and profile data are separated by user through Supabase Row Level Security.
 
 ## Verification
 

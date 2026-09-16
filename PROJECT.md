@@ -47,7 +47,7 @@ safe to spend = current balance - upcoming bills - savings goal
 
 ## Product Decisions
 
-- Ask how users want to keep their balance up to date after their first authenticated sign-in: Log purchases or Update my balance. Existing accounts without a preference see the same one-time choice. Save the preference with their plan and allow changes in Plan → Balance tracking.
+- Ask how users want to keep their balance up to date after their first authenticated sign-in: Log purchases or Update my balance. Existing accounts without a preference see the same one-time choice. Save the preference in their profile and allow changes in Plan → Balance tracking.
 - Both Home actions remain available. The preference selects a distinct Home view. Purchase tracking shows logged-today totals, quick amount and optional description entry, and visible day-grouped history with Show older purchases. Balance check-in keeps the balance calculator layout and opens the same purchase view through Log or view purchases, with Back to balance check-in navigation. A starting balance is required before the first purchase, without hiding the purchase view.
 - Logging a purchase deducts its amount from the working balance once and stores the entry. Updating the balance replaces the working balance, retains purchase history, and never reapplies old purchases. Show when the balance was last checked separately from the latest purchase timestamp.
 - Home calculates spending room immediately from committed balance, bills, and savings. Balance drafts require Update balance; they do not change the saved plan while typing. Percentage savings retain their existing behavior of recalculating from the current balance.
@@ -95,6 +95,8 @@ safe to spend = current balance - upcoming bills - savings goal
 - Git and GitHub
 
 ## Current Progress
+
+- Tracking preferences now belong to `profiles` without changing the mobile API contract. The updated API reads and writes profiles, and migration 004 removes the unused plan column. Existing preference data is intentionally not migrated. Local type checks, builds, and contract tests pass; live profile reads and writes remain unverified.
 
 - Purchase tracking now uses a dedicated Home screen with logged-today totals, quick amount/optional-description entry, and visible day-grouped history (20 at a time). Balance check-in keeps its existing Home and opens the complete purchase UI on demand with return navigation. Validated through 17 tests, TypeScript, backend build, web export, and synthetic browser checks for described purchase saving/reload, distinct preference routing, optional tracker navigation, and 320px overflow. Physical-device checks remain pending. Redeploy the API for purchase descriptions; no additional SQL migration beyond 002 is needed because purchases already use JSON storage.
 
@@ -146,7 +148,7 @@ safe to spend = current balance - upcoming bills - savings goal
 
 ## Next Steps
 
-The tracking preference and purchase flow are implemented locally. Apply `backend/sql/002_tracking_preference.sql` after migration 001, then deploy the updated API before using the new frontend. Neither migration nor deployment was performed as part of this change. Client save confirmation rejects older APIs that omit tracking data. Existing plans keep their data and receive no invented balance-check timestamp.
+Tracking preferences now use `profiles` as their source of truth. Migration 003 creates profiles, and migration 004 removes `plans.tracking_preference` without migrating old preference values. Deploy the updated API before applying migration 004, then verify preference loading and saving. Client save confirmation rejects older APIs that omit tracking data. Existing plans keep their balance, purchases, and timestamps.
 
 The new savings-input API is implemented locally. Apply `backend/sql/001_savings_percentage.sql` to Supabase before deploying the updated backend. This migration and deployment have not been performed in this task. Legacy fixed-amount plans remain compatible; new savings inputs require the updated API and are not reported as saved if an older API drops the setting.
 

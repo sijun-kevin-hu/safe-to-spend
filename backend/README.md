@@ -40,9 +40,18 @@ Protected endpoints require this header:
 Authorization: Bearer <supabase-access-token>
 ```
 
-## Savings settings and deployment
+## Database migrations and deployment
 
 Apply `sql/001_savings_percentage.sql` in the Supabase SQL editor **before** deploying this API version. It adds nullable `savings_amount` and `savings_percentage` columns and migrates existing nonzero goals into fixed amounts.
+
+Tracking preferences now belong to `profiles`, while balances and purchase history remain in `plans`. Apply migrations in this order:
+
+1. Apply `sql/002_tracking_preference.sql` if it has not already run.
+2. Apply `sql/003_profiles.sql` once to create and backfill profiles.
+3. Deploy this API version, which reads and writes preferences through `profiles`.
+4. Apply `sql/004_drop_plan_tracking_preference.sql` to remove the unused column from `plans`.
+
+This project does not preserve tracking preferences previously stored in `plans`.
 
 The plan contract accepts one savings input: `savingsAmount`, `savingsPercentage`, or neither. Both inputs are nullable, but they cannot both contain values. Responses include the calculated `savingsReserved`, which percentage plans derive from the nonnegative current balance and round to cents.
 
