@@ -16,7 +16,7 @@ type Section = "overview" | "savings" | "bills" | "tracking";
 
 export default function PlanScreen() {
   const [section, setSection] = useState<Section>("overview");
-  const { trackingPreference, setTrackingPreference, savingsReserved, billItems } = usePlan();
+  const { trackingPreference, setTrackingPreference, savingsReserved, savingsMode, savingsValue, billItems } = usePlan();
   const isFocused = useIsFocused();
   const billsTotal = billItems.reduce((total, bill) => total + bill.amount, 0);
 
@@ -43,7 +43,7 @@ export default function PlanScreen() {
         <PlanCard
           title="Savings reserve"
           amount={Number.isFinite(savingsReserved) ? formatCurrency(savingsReserved) : "—"}
-          description="Excluded from safe-to-spend until you change it."
+          description={savingsMode === "percentage" ? `${savingsValue || "0"}% of current balance` : "Fixed amount · Excluded from safe-to-spend"}
           onPress={() => openSection("savings")}
         />
         <PlanCard

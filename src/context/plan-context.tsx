@@ -9,6 +9,7 @@ import {
   type TrackingState,
   savingsError,
   savingsSetting,
+  type SavingsMode,
   type PlanInput,
   type StoredPlan,
 } from "@/lib/plan";
@@ -30,6 +31,8 @@ type PlanContextValue = {
   purchases: TrackingState["purchases"];
   updateBalance: (value: number) => void;
   addPurchase: (amount: number, note?: string) => void;
+  savingsMode: SavingsMode;
+  changeSavingsMode: (mode: SavingsMode) => void;
   savingsValue: string;
   setSavingsValue: Dispatch<SetStateAction<string>>;
   savingsReserved: number;
@@ -99,17 +102,18 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
     };
     setTracking((current) => recordPurchase(current, purchase));
   }
+  const [savingsMode, setSavingsMode] = useState<SavingsMode>(
+    initialPlan.savingsPercentage === null ? "amount" : "percentage",
+  );
   const [savingsValue, setSavingsValue] = useState(String(
-    initialPlan.savingsPercentage === null
-      ? initialPlan.savingsAmount ?? ""
-      : initialPlan.savingsReserved,
+    initialPlan.savingsPercentage ?? initialPlan.savingsAmount ?? "",
   ));
   const [billItems, setBillItems] = useState(initialPlan.billItems);
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const queue = useRef<Autosave<PlanInput> | null>(null);
-  const validationError = savingsError("amount", savingsValue);
+  const validationError = savingsError(savingsMode, savingsValue);
   const validBalance = !!balance.trim() && Number.isFinite(Number(balance));
-  const { savingsAmount, savingsPercentage } = savingsSetting("amount", savingsValue);
+  const { savingsAmount, savingsPercentage } = savingsSetting(savingsMode, savingsValue);
   const savingsReserved = calculateSavingsReserved(
     Number(balance),
     savingsAmount,
@@ -125,7 +129,7 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
     billItems: initialPlan.billItems,
   };
 
-  // Initialize from the loaded plan. Legacy percentages are saved as their current fixed reserve.
+  // Initialize from the loaded plan without overwriting it on mount.
   useEffect(() => {
     const autosave = new Autosave(initialInput, (plan) => requestPlan(userId, plan), setSaveState);
     queue.current = autosave;
@@ -154,11 +158,21 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
     billItems,
   ]);
 
+  function changeSavingsMode(mode: SavingsMode) {
+    if (mode === savingsMode) return;
+    const currentBalance = Number(balance);
+    const reserve = Number.isFinite(savingsReserved) ? savingsReserved : 0;
+    setSavingsValue(mode === "percentage"
+      ? String(currentBalance > 0 ? Math.min(100, Math.round(reserve / currentBalance * 10000) / 100) : 0)
+      : String(reserve));
+    setSavingsMode(mode);
+  }
+
   return (
     <PlanContext.Provider value={{
       saveState, balance, trackingPreference, setTrackingPreference,
       balanceUpdatedAt: tracking.balanceUpdatedAt, purchases: tracking.purchases,
-      updateBalance, addPurchase, savingsValue, setSavingsValue,
+      updateBalance, addPurchase, savingsMode, changeSavingsMode, savingsValue, setSavingsValue,
       savingsReserved, validationError, billItems, setBillItems,
     }}>
       {children}
