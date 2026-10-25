@@ -11,7 +11,7 @@ Safe to Spend is a privacy-first Expo and React Native app that shows how much m
 
 ## Run the mobile app
 
-1. Clone the repository and enter its directory:
+1. Clone the repository and enter its  directory:
 
    ```bash
    git clone https://github.com/sijun-kevin-hu/safe-to-spend.git
