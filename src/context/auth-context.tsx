@@ -57,7 +57,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
       });
 
-    const refresh = (state: string) =>
+    const refresh = (state: string | null | undefined) =>
       state === "active"
         ? supabase?.auth.startAutoRefresh()
         : supabase?.auth.stopAutoRefresh();

@@ -85,9 +85,9 @@ safe to spend = current balance - upcoming bills - savings goal
 
 ## Current Technical Stack
 
-- Expo SDK 57
-- React Native 0.86
-- React 19
+- Expo SDK 58
+- React Native 0.88
+- React 19.3
 - TypeScript
 - Expo Router
 - Node.js, Express, and TypeScript for the backend
@@ -95,6 +95,8 @@ safe to spend = current balance - upcoming bills - savings goal
 - Git and GitHub
 
 ## Current Progress
+
+- Upgraded to Expo SDK 58 (`expo` 58.0.19), React Native 0.88.0, and React 19.3.0 with aligned Expo/native dependencies and a regenerated npm lockfile. Added `.nvmrc` for the locally available supported Node 22.17.1 runtime. Updated strict native ref typing, nullable app-state/color-scheme handling, and web CSS safe-area spacing. Verified TypeScript, all 11 frontend tests, Expo Doctor (20/20), dependency alignment, and clean production exports for iOS, Android, and web. Physical-device navigation, date picker, authentication, and saving in SDK 58-compatible Expo Go remain unverified.
 
 - New authenticated accounts now complete a themed profile step before plan onboarding. The app collects a full name and date of birth, saves them as `profiles.display_name` and `profiles.date_of_birth` through authenticated `/profile` endpoints, and reuses the existing privacy-first design system. Apply migration 005 and deploy the updated API before testing this flow with a real account.
 

@@ -4,10 +4,12 @@ Safe to Spend is a privacy-first Expo and React Native app that shows how much m
 
 ## Requirements
 
-- Node.js 22.13 or newer
+- Node.js 22.13+ on the 22.x line, 24.3+ on the 24.x line, or 26+
 - npm
-- The Expo Go app on an iOS or Android device
+- An SDK 58-compatible Expo Go app on an iOS or Android device
 - A Supabase project URL and publishable key from the project owner
+
+If you use nvm, run `nvm use` to select the Node 22.17.1 version in `.nvmrc`.
 
 ## Run the mobile app
 
@@ -98,7 +100,7 @@ The app has been tested on a physical device for account creation/sign-in, savin
 
 ## Technology
 
-- Expo SDK 57 and React Native
+- Expo SDK 58 and React Native 0.88
 - TypeScript and Expo Router
 - Express REST API
 - Supabase Auth and PostgreSQL

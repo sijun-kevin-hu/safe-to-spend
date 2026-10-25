@@ -1,8 +1,12 @@
 import { TabList, Tabs, TabSlot, TabTrigger, type TabTriggerSlotProps } from "expo-router/ui";
+import type { ComponentProps } from "react";
 import { Pressable, StyleSheet, Text } from "react-native";
 import { palette } from "@/constants/design";
 
-function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
+// Router's slot ref still uses the legacy View type; Pressable uses the strict native instance type.
+type TabButtonProps = Omit<TabTriggerSlotProps, "ref"> & Pick<ComponentProps<typeof Pressable>, "ref">;
+
+function TabButton({ children, isFocused, ...props }: TabButtonProps) {
   return (
     <Pressable {...props} style={({ pressed }) => [styles.tab,
     isFocused && styles.selected, pressed && styles.pressed]}>
