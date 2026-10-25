@@ -72,7 +72,7 @@ function BalanceHome({ onPurchases, onUpdated }: {
   else if (safeToSpend !== null) resultMessage = overBudget
     ? "Your listed bills and savings exceed your current balance."
     : billItems.length > 0 && savingsReserved > 0
-      ? "Your listed bills and savings are set aside."
+      ? "Your listed bills and savings reserve are excluded."
       : "Based on what you entered. Add bills and savings in Plan for a fuller picture.";
 
   return <Screen>
@@ -115,7 +115,7 @@ function BalanceHome({ onPurchases, onUpdated }: {
         <Text style={ui.money}>{formatCurrency(billsTotal)}</Text>
       </View>
       <View style={ui.row}>
-        <Text style={ui.body}>Savings</Text>
+        <Text style={ui.body}>Savings reserve</Text>
         <Text style={ui.money}>{validationError ? "—" : formatCurrency(savingsReserved)}</Text>
       </View>
       <Text style={styles.caption}>Manage these amounts in Plan.</Text>

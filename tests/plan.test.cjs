@@ -163,3 +163,19 @@ test('zero and negative balances work, while invalid purchases are rejected', ()
   }
   assert.equal(recordPurchase(state, { id: 'one', amount: 2, createdAt: 'now' }).balance, -1);
 });
+
+test('fixed reserve stays unchanged after purchases, balance updates, and reloads', () => {
+  const setting = savingsSetting('amount', '150');
+  const reserve = balance => calculateSavingsReserved(balance, setting.savingsAmount, setting.savingsPercentage);
+  const initial = { balance: 1000, balanceUpdatedAt: null, purchases: [] };
+  const purchased = recordPurchase(initial, { id: 'reserve-test', amount: 50, createdAt: '2026-10-25T12:00:00Z' });
+  assert.equal(reserve(purchased.balance), 150);
+  assert.equal(purchased.balance - reserve(purchased.balance), 800);
+  const refreshed = updateTrackingBalance(purchased, 2000, '2026-10-26T12:00:00Z');
+  assert.equal(reserve(refreshed.balance), 150);
+  assert.equal(reserve(0), 150);
+  const reloaded = JSON.parse(JSON.stringify(setting));
+  assert.equal(calculateSavingsReserved(2000, reloaded.savingsAmount, reloaded.savingsPercentage), 150);
+  const cleared = savingsSetting('amount', '');
+  assert.equal(calculateSavingsReserved(2000, cleared.savingsAmount, cleared.savingsPercentage), 0);
+});

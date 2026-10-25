@@ -10,7 +10,6 @@ import {
   savingsError,
   savingsSetting,
   type PlanInput,
-  type SavingsMode,
   type StoredPlan,
 } from "@/lib/plan";
 import { requestPlan } from "@/lib/plan-api";
@@ -31,10 +30,8 @@ type PlanContextValue = {
   purchases: TrackingState["purchases"];
   updateBalance: (value: number) => void;
   addPurchase: (amount: number, note?: string) => void;
-  savingsMode: SavingsMode;
   savingsValue: string;
   setSavingsValue: Dispatch<SetStateAction<string>>;
-  changeSavingsMode: (mode: SavingsMode) => void;
   savingsReserved: number;
   validationError: string;
   billItems: Bill[];
@@ -102,18 +99,17 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
     };
     setTracking((current) => recordPurchase(current, purchase));
   }
-  const [savingsMode, setSavingsMode] = useState<SavingsMode>(
-    initialPlan.savingsPercentage === null ? "amount" : "percentage",
-  );
   const [savingsValue, setSavingsValue] = useState(String(
-    initialPlan.savingsPercentage ?? initialPlan.savingsAmount ?? "",
+    initialPlan.savingsPercentage === null
+      ? initialPlan.savingsAmount ?? ""
+      : initialPlan.savingsReserved,
   ));
   const [billItems, setBillItems] = useState(initialPlan.billItems);
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const queue = useRef<Autosave<PlanInput> | null>(null);
-  const validationError = savingsError(savingsMode, savingsValue);
+  const validationError = savingsError("amount", savingsValue);
   const validBalance = !!balance.trim() && Number.isFinite(Number(balance));
-  const { savingsAmount, savingsPercentage } = savingsSetting(savingsMode, savingsValue);
+  const { savingsAmount, savingsPercentage } = savingsSetting("amount", savingsValue);
   const savingsReserved = calculateSavingsReserved(
     Number(balance),
     savingsAmount,
@@ -129,7 +125,7 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
     billItems: initialPlan.billItems,
   };
 
-  // Initialize only after loading; mounting must never overwrite a remote plan.
+  // Initialize from the loaded plan. Legacy percentages are saved as their current fixed reserve.
   useEffect(() => {
     const autosave = new Autosave(initialInput, (plan) => requestPlan(userId, plan), setSaveState);
     queue.current = autosave;
@@ -158,20 +154,12 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
     billItems,
   ]);
 
-  function changeSavingsMode(mode: SavingsMode) {
-    if (mode === savingsMode) return;
-    setSavingsValue(mode === "percentage"
-      ? "10"
-      : String(Number.isFinite(savingsReserved) && savingsReserved > 0 ? savingsReserved : ""));
-    setSavingsMode(mode);
-  }
-
   return (
     <PlanContext.Provider value={{
       saveState, balance, trackingPreference, setTrackingPreference,
       balanceUpdatedAt: tracking.balanceUpdatedAt, purchases: tracking.purchases,
-      updateBalance, addPurchase, savingsMode, savingsValue, setSavingsValue,
-      changeSavingsMode, savingsReserved, validationError, billItems, setBillItems,
+      updateBalance, addPurchase, savingsValue, setSavingsValue,
+      savingsReserved, validationError, billItems, setBillItems,
     }}>
       {children}
     </PlanContext.Provider>
