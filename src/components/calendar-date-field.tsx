@@ -58,10 +58,11 @@ export function CalendarDateField({
             display={Platform.OS === "ios" ? "inline" : "default"}
             themeVariant="light"
             accentColor={palette.accent}
-            onChange={(_event, selected) => {
+            onValueChange={(_event, selected) => {
               if (Platform.OS === "android") setOpen(false);
-              if (selected) onChange(selected);
+              onChange(selected);
             }}
+            onDismiss={() => setOpen(false)}
           />
           {Platform.OS === "ios" && (
             <AppButton
