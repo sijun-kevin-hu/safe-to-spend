@@ -79,6 +79,41 @@ test('purchase descriptions are optional, trimmed, and limited to 120 characters
   assert.equal(planSchema.safeParse({ ...base, purchases: [{ ...purchase, note: 'x'.repeat(121) }] }).success, false);
 });
 
+test('API preserves income kinds alongside legacy purchases without reapplying amounts', () => {
+  const legacy = { id: 'coffee', amount: 4.5, createdAt: '2026-11-14T12:00:00.000Z' };
+  const income = { ...legacy, id: 'pay', kind: 'income', amount: 200, note: 'Paycheck' };
+  const input = { ...base, purchases: [income, legacy] };
+  const saved = planSchema.parse(input);
+  const loaded = planSchema.parse(JSON.parse(JSON.stringify(saved)));
+  assert.deepEqual(loaded.purchases, [income, legacy]);
+  assert.equal(loaded.balance, base.balance);
+  for (const entry of [
+    { ...income, kind: 'refund' }, { ...income, kind: null },
+    { ...income, amount: 0 }, { ...income, amount: -20 },
+    { ...income, note: 'x'.repeat(121) }, { ...income, createdAt: 'tomorrow' },
+  ]) assert.equal(planSchema.safeParse({ ...base, purchases: [entry] }).success, false);
+});
+
+test('API preserves accurate balance check-ins and transaction snapshots', () => {
+  const timestamp = '2026-11-15T12:00:00.000Z';
+  const start = { id: 'start', kind: 'balance_check_in', amount: 0,
+    balanceBefore: null, balanceAfter: 100, createdAt: timestamp };
+  const checkIn = { ...start, id: 'check-in', amount: -20, balanceBefore: 100, balanceAfter: 80 };
+  const income = { ...start, id: 'income', kind: 'income', amount: 50, balanceBefore: 80, balanceAfter: 130 };
+  const purchase = { ...start, id: 'purchase', kind: 'purchase', amount: 10, balanceBefore: 130, balanceAfter: 120 };
+  const purchases = [purchase, income, checkIn, start];
+  assert.deepEqual(planSchema.parse({ ...base, balance: 120, purchases }).purchases, purchases);
+  for (const entry of [
+    { ...checkIn, amount: 0, balanceAfter: 100 },
+    { ...checkIn, amount: -110, balanceAfter: -10 },
+  ]) assert.equal(planSchema.safeParse({ ...base, purchases: [entry] }).success, true);
+  for (const entry of [
+    { ...checkIn, amount: 20 }, { ...checkIn, balanceBefore: undefined },
+    { ...checkIn, balanceAfter: undefined }, { ...start, amount: 100 },
+    { ...income, balanceBefore: null }, { ...purchase, balanceAfter: 140 },
+  ]) assert.equal(planSchema.safeParse({ ...base, purchases: [entry] }).success, false);
+});
+
 test('profiles require a trimmed display name and valid non-future date of birth', () => {
   assert.deepEqual(profileSchema.parse({
     displayName: '  Kevin Hu  ',

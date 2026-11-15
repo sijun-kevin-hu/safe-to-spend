@@ -135,7 +135,50 @@ test('disposing cancels queued writes and prevents an old account from retrying'
   assert.deepEqual(writes, [1]);
 });
 
-const { recordPurchase, updateTrackingBalance } = loadSource('src/lib/plan.ts');
+const { recordPurchase, recordTransaction, updateTrackingBalance } = loadSource('src/lib/plan.ts');
+test('income and purchases share history without reapplying entries after balance check-in', () => {
+  const checkedAt = '2026-11-14T12:00:00.000Z';
+  const income = { id: 'pay', kind: 'income', amount: 250.25, note: 'Paycheck', createdAt: checkedAt };
+  const initial = { balance: -20, balanceUpdatedAt: checkedAt, purchases: [] };
+  const received = recordTransaction(initial, income);
+  assert.equal(received.balance, 230.25);
+  assert.equal(received.balanceUpdatedAt, checkedAt);
+  assert.deepEqual(received.purchases, [{ ...income, balanceBefore: -20, balanceAfter: 230.25 }]);
+  assert.equal(recordTransaction(received, income), received, 'repeating an ID cannot add income twice');
+  const spent = recordPurchase(received, { id: 'coffee', amount: 4.5, createdAt: checkedAt });
+  assert.equal(spent.balance, 225.75);
+  const refreshed = updateTrackingBalance(spent, 220, checkedAt);
+  assert.deepEqual(refreshed.purchases.slice(1), spent.purchases);
+  assert.equal(refreshed.purchases[0].balanceBefore, 225.75);
+  assert.equal(refreshed.purchases[0].balanceAfter, 220);
+  assert.equal(refreshed.purchases[0].amount, -5.75);
+  const reloaded = JSON.parse(JSON.stringify(refreshed));
+  assert.equal(recordTransaction(reloaded, income).balance, 220);
+  assert.equal(calculateSavingsReserved(received.balance, 50, null), 50);
+  assert.equal(calculateSavingsReserved(received.balance, null, 10), 23.03);
+  for (const amount of [0, -1, NaN, Infinity, 1e13]) {
+    assert.throws(() => recordTransaction(initial, { ...income, amount }));
+  }
+});
+
+test('retrying an income snapshot persists the same balance and entry', async () => {
+  const initial = { balance: 100, balanceUpdatedAt: null, purchases: [] };
+  const received = recordTransaction(initial, {
+    id: 'pay', kind: 'income', amount: 200, createdAt: '2026-11-14T12:00:00.000Z',
+  });
+  const writes = [];
+  const queue = new Autosave(initial, async value => {
+    writes.push(JSON.parse(JSON.stringify(value)));
+    if (writes.length === 1) throw Error('Response lost');
+  }, () => {}, 5, 10);
+  queue.update(received);
+  await wait(40);
+  queue.dispose();
+  assert.deepEqual(writes, [received, received]);
+  assert.equal(writes[1].balance, 300);
+  assert.equal(writes[1].purchases.length, 1);
+});
+
 test('purchase logging, balance refresh, and later purchases never double count', () => {
   const initial = { balance: 100, balanceUpdatedAt: null, purchases: [] };
   const now = '2026-09-15T12:00:00.000Z';
@@ -145,12 +188,12 @@ test('purchase logging, balance refresh, and later purchases never double count'
   assert.equal(recordPurchase(logged, purchase).balance, 87.66);
   const refreshed = updateTrackingBalance(logged, 80, now);
   assert.equal(refreshed.balance, 80);
-  assert.equal(refreshed.purchases.length, 1);
+  assert.equal(refreshed.purchases.length, 2);
   assert.equal(refreshed.balanceUpdatedAt, now);
   const next = recordPurchase(refreshed, { ...purchase, id: 'two', amount: 0.1 });
   assert.equal(next.balance, 79.9);
   assert.equal(next.balanceUpdatedAt, now, 'logging does not pretend the balance was checked');
-  assert.equal(next.purchases.length, 2);
+  assert.equal(next.purchases.length, 3);
 });
 
 test('zero and negative balances work, while invalid purchases are rejected', () => {
@@ -178,4 +221,26 @@ test('fixed reserve stays unchanged after purchases, balance updates, and reload
   assert.equal(calculateSavingsReserved(2000, reloaded.savingsAmount, reloaded.savingsPercentage), 150);
   const cleared = savingsSetting('amount', '');
   assert.equal(calculateSavingsReserved(2000, cleared.savingsAmount, cleared.savingsPercentage), 0);
+});
+
+test('balance check-ins record starting, unchanged, zero, and negative balances exactly once', () => {
+  const time = '2026-11-15T12:00:00.000Z';
+  const initial = { balance: 0, balanceUpdatedAt: null, purchases: [] };
+  const started = updateTrackingBalance(initial, 100, time, 'start');
+  assert.deepEqual(started.purchases[0], {id:'start',kind:'balance_check_in',createdAt:time,
+    amount:0,balanceBefore:null,balanceAfter:100});
+  assert.equal(updateTrackingBalance(started,100,time,'start'),started);
+  const unchanged = updateTrackingBalance(started,100,time,'same');
+  assert.equal(unchanged.purchases[0].amount,0);
+  const zero = updateTrackingBalance(unchanged,0,time,'zero');
+  assert.equal(zero.purchases[0].amount,-100);
+  const negative = updateTrackingBalance(zero,-12.34,time,'negative');
+  assert.equal(negative.purchases[0].balanceBefore,0);
+  assert.equal(negative.purchases[0].balanceAfter,-12.34);
+  assert.equal(negative.purchases[0].amount,-12.34);
+  assert.equal(negative.purchases.length,4);
+  const spent = recordPurchase(negative,{id:'spend',amount:0.1,createdAt:time});
+  assert.equal(spent.purchases[0].balanceBefore,-12.34);
+  assert.equal(spent.purchases[0].balanceAfter,-12.44);
+  assert.equal(spent.balanceUpdatedAt,time);
 });

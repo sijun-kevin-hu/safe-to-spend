@@ -9,6 +9,7 @@ type CurrencyInputProps = {
   placeholder?: string;
   error?: boolean;
   symbol?: "$" | "%";
+  editable?: boolean;
 };
 
 export function CurrencyInput({
@@ -18,6 +19,7 @@ export function CurrencyInput({
   placeholder = "0.00",
   error = false,
   symbol = "$",
+  editable = true,
 }: CurrencyInputProps) {
   const [focused, setFocused] = useState(false);
   const formatValue = () => {
@@ -35,6 +37,7 @@ export function CurrencyInput({
       <TextInput
         accessibilityLabel={accessibilityLabel}
         value={value}
+        editable={editable}
         onChangeText={onChangeText}
         onFocus={() => setFocused(true)}
         onBlur={() => { setFocused(false); formatValue(); }}

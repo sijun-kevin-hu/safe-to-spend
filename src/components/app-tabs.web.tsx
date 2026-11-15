@@ -21,6 +21,7 @@ export default function AppTabs() {
       <TabList style={styles.navigation}>
         <Text style={styles.brand}>Safe to Spend</Text>
         <TabTrigger name="home" href="/" asChild><TabButton>Home</TabButton></TabTrigger>
+        <TabTrigger name="activity" href="/activity" asChild><TabButton>Activity</TabButton></TabTrigger>
         <TabTrigger name="plan" href="/plan" asChild><TabButton>Plan</TabButton></TabTrigger>
       </TabList>
       <TabSlot style={styles.content} />
@@ -33,7 +34,7 @@ const styles = StyleSheet.create({
     flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8,
     padding: 12, backgroundColor: palette.surface, borderBottomWidth: 1, borderBottomColor: palette.border
   },
-  brand: { color: palette.accent, fontWeight: "700", fontSize: 16, marginRight: "auto" },
+  brand: { color: palette.accent, fontWeight: "700", fontSize: 16, width: "100%" },
   tab: { padding: 14, minHeight: 48, borderRadius: 12 },
   label: { color: palette.muted, fontSize: 14 },
   selected: { backgroundColor: palette.soft },

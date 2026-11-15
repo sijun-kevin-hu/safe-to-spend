@@ -39,6 +39,7 @@ test('save confirmation accepts JSONB key order but rejects missing tracking and
     response = { balance: 87.66, savingsAmount: null, savingsPercentage: null, savingsReserved: 0, billItems: [] };
     await assert.rejects(requestPlan('preview', input));
     const legacy = await requestPlan('preview');
+    assert.equal(legacy.supportsIncome, false);
     assert.equal(legacy.trackingPreference, null);
     assert.equal(legacy.balanceUpdatedAt, null);
     assert.deepEqual(legacy.purchases, []);
@@ -59,4 +60,44 @@ test('profile loading supports incomplete accounts and confirms saved identity f
   } finally {
     global.fetch = originalFetch;
   }
+});
+
+test('income survives reload and save confirmation rejects APIs that discard its kind', async () => {
+  const originalFetch = global.fetch;
+  const plan = { ...input, balance: 300, purchases: [
+    { ...input.purchases[0], id: 'pay', kind: 'income', amount: 200, note: 'Paycheck' },
+    input.purchases[0],
+  ] };
+  let response = { ...plan, savingsReserved: 0, supportsIncome: true };
+  global.fetch = async () => ({ ok: true, json: async () => response });
+  try {
+    assert.deepEqual((await requestPlan('preview', plan)).purchases, plan.purchases);
+    assert.equal((await requestPlan('preview')).supportsIncome, true);
+    assert.deepEqual((await requestPlan('preview')).purchases, plan.purchases);
+    response = { ...response, purchases: plan.purchases.map(({ kind, ...entry }) => entry) };
+    await assert.rejects(requestPlan('preview', plan), /did not save/);
+    response = { ...response, purchases: [{ ...plan.purchases[0], kind: 'refund' }] };
+    await assert.rejects(requestPlan('preview'), /invalid tracking data/);
+  } finally { global.fetch = originalFetch; }
+});
+
+test('balance history survives reload and save confirmation checks before/after details', async () => {
+  const originalFetch = global.fetch;
+  const entry = { id: 'check-in', kind: 'balance_check_in', amount: -7.66,
+    balanceBefore: 87.66, balanceAfter: 80, createdAt: input.balanceUpdatedAt };
+  const plan = { ...input, balance: 80, purchases: [entry, ...input.purchases] };
+  let response = { ...plan, savingsReserved: 0 };
+  global.fetch = async () => ({ ok: true, json: async () => response });
+  try {
+    assert.deepEqual((await requestPlan('preview', plan)).purchases, plan.purchases);
+    assert.deepEqual((await requestPlan('preview')).purchases[0], entry);
+    response = { ...response, purchases: [{ ...entry, balanceBefore: 100 }] };
+    await assert.rejects(requestPlan('preview'), /invalid tracking data/);
+    response = { ...response, purchases: [{ ...entry, balanceBefore: undefined, balanceAfter: undefined }] };
+    await assert.rejects(requestPlan('preview'), /invalid tracking data/);
+    const income = { ...entry, id: 'pay', kind: 'income', amount: 20, balanceBefore: 80, balanceAfter: 100 };
+    const withIncome = { ...input, balance: 100, purchases: [income] };
+    response = { ...withIncome, savingsReserved: 0, purchases: [{ ...income, balanceBefore: undefined, balanceAfter: undefined }] };
+    await assert.rejects(requestPlan('preview', withIncome), /did not save/);
+  } finally { global.fetch = originalFetch; }
 });

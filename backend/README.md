@@ -70,3 +70,15 @@ Run contract checks with:
 npm run build
 node --test tests/plan.test.cjs
 ```
+
+## Purchase and income logging
+
+The existing `purchases` array holds purchase, income, and balance_check_in activity entries. Purchase/income entries contain a positive `amount`, `id`, ISO `createdAt`, optional `note` (up to 120 characters), and optional `kind` (`purchase` or `income`). New entries include `balanceBefore` and `balanceAfter`. Balance check-ins use `kind: "balance_check_in"`, require before/after balances, and store a signed change in `amount` (including zero). A starting balance has `balanceBefore: null` and `amount: 0`. Validation rejects partial or inconsistent snapshots. Entries without a kind remain legacy purchases.
+
+The client applies each entry once to the working balance and sends the resulting balance and complete history together in `PUT /plan`. The API validates and stores that snapshot without applying amounts again. A balance check-in replaces the working balance while retaining history. Percentage savings still derive from the current balance.
+
+Plan responses advertise `supportsIncome: true`. The client prevents income submission against older APIs and checks that saved entry kinds were preserved. This change reuses the existing JSONB column and requires no additional database migration. Deploy the API before the income-aware client, and avoid older API/client versions once income entries exist.
+
+Production was updated on November 15, 2026. Health returns 200, and plan/profile/auth endpoints reject unauthenticated requests with 401. Signed-in production writes have not been tested in this task.
+
+Balance check-in history and before/after snapshots were deployed to production on November 15, 2026. Existing JSONB storage supports the new entry shape without a database migration. Older entries are retained without reconstructing unknown balance details.

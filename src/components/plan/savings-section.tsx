@@ -37,7 +37,7 @@ export function SavingsSection() {
         />
         {!!validationError && <Text accessibilityRole="alert" style={ui.error}>{validationError}</Text>}
         <Text style={ui.body}>{percentage
-          ? "Your reserve changes with your balance, including after purchases. A zero or negative balance reserves $0."
+          ? "Your reserve changes with your balance, including after purchases and income. A zero or negative balance reserves $0."
           : "Excluded from safe-to-spend until you change it. Include only money still in your current balance. Leave blank for no reserve."}</Text>
       </View>
       <View style={ui.card}>

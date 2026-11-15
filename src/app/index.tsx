@@ -1,4 +1,6 @@
 import { PurchaseHome } from "@/components/home/purchase-home";
+import { ActivitySheet } from "@/components/home/activity-sheet";
+import { Snackbar } from "@/components/snackbar";
 import { SaveStatus } from "@/components/plan/save-status";
 import { AppButton } from "@/components/app-button";
 import { CurrencyInput } from "@/components/currency-input";
@@ -6,7 +8,7 @@ import { Screen } from "@/components/screen";
 import { palette, ui } from "@/constants/design";
 import { usePlan } from "@/context/plan-context";
 import { formatCurrency } from "@/lib/format";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BackHandler, Keyboard, StyleSheet, Text, View } from "react-native";
 
 import { useIsFocused } from "expo-router";
@@ -29,15 +31,13 @@ function HomeMode({ preference }: { preference: Action }) {
     });
     return () => listener.remove();
   }, [isFocused, view, preference]);
-  if (view === "purchases") return <PurchaseHome
-    onBalance={() => setView("balance")}
-    onBack={preference === "balance" ? () => setView("balance") : undefined} />;
-  return <BalanceHome onPurchases={() => setView("purchases")}
+  if (view === "purchases") return <PurchaseHome onBalance={() => setView("balance")} />;
+  return <BalanceHome onPurchases={preference === "purchases" ? () => setView("purchases") : undefined}
     onUpdated={preference === "purchases" ? () => setView("purchases") : undefined} />;
 }
 
 function BalanceHome({ onPurchases, onUpdated }: {
-  onPurchases: () => void;
+  onPurchases?: () => void;
   onUpdated?: () => void;
 }) {
   const { balance, balanceUpdatedAt, updateBalance, savingsReserved,
@@ -45,6 +45,9 @@ function BalanceHome({ onPurchases, onUpdated }: {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [confirmation, setConfirmation] = useState<{ id: number; message: string } | null>(null);
+  const dismissConfirmation = useCallback(() => setConfirmation(null), []);
   const submitted = useRef(false);
   const billsTotal = billItems.reduce((total, bill) => total + bill.amount, 0);
   const safeToSpend = balanceUpdatedAt && !validationError
@@ -61,7 +64,7 @@ function BalanceHome({ onPurchases, onUpdated }: {
     submitted.current = true;
     Keyboard.dismiss();
     updateBalance(amount);
-    setNotice("Balance updated. Past purchases won’t be subtracted again.");
+    setNotice("Balance updated. Past purchases and income won’t be applied again.");
     setDraft("");
     setError("");
     onUpdated?.();
@@ -75,7 +78,7 @@ function BalanceHome({ onPurchases, onUpdated }: {
       ? "Your listed bills and savings reserve are excluded."
       : "Based on what you entered. Add bills and savings in Plan for a fuller picture.";
 
-  return <Screen>
+  return <><Screen>
     <Text accessibilityRole="header" style={ui.title}>Safe to Spend</Text>
     <View style={[styles.result, overBudget && styles.warning]} accessibilityLiveRegion="polite">
       <Text style={ui.label}>{overBudget ? "Amount over your balance" : "Safe to spend"}</Text>
@@ -88,21 +91,26 @@ function BalanceHome({ onPurchases, onUpdated }: {
       <Text style={styles.balance}>{formatCurrency(Number(balance))}</Text>
       <Text style={ui.body}>{balanceUpdatedAt
         ? `Balance last checked: ${formatTimestamp(balanceUpdatedAt)}`
-        : "Confirm your current balance before logging purchases."}</Text>
-      {purchases[0] && <Text style={styles.caption}>Last purchase logged: {formatTimestamp(purchases[0].createdAt)}</Text>}
+        : "Confirm your current balance before logging purchases or income."}</Text>
+      {purchases[0] && <Text style={styles.caption}>Last activity logged: {formatTimestamp(purchases[0].createdAt)}</Text>}
       <View style={styles.entry}>
         <Text accessibilityRole="header" style={ui.sectionTitle}>Balance check-in</Text>
         <Text style={ui.body}>{!balanceUpdatedAt && onUpdated
-          ? "Set your starting balance once, then start logging purchases."
-          : "Check your balance in your banking app, then enter it here. No purchase-by-purchase tracking needed."}</Text>
+          ? "Set your starting balance once, then start logging purchases and income."
+          : "Check your balance in your banking app, then enter it here. No need to log purchases or income."}</Text>
         <Text style={ui.label}>Current balance</Text>
         <CurrencyInput accessibilityLabel="Current balance" value={draft} error={!!error}
           onChangeText={(value) => { submitted.current = false; setDraft(value); setError(""); }} />
-        {balanceUpdatedAt && <Text style={styles.caption}>Include your latest purchases. This replaces the balance above.</Text>}
+        {balanceUpdatedAt && <Text style={styles.caption}>Include your latest purchases and income. This replaces the balance above.</Text>}
         {!!error && <Text accessibilityRole="alert" style={ui.error}>{error}</Text>}
         <AppButton title="Update balance" disabled={saveState !== "saved"} onPress={submit} />
-        <AppButton title={onUpdated ? "Back to purchases" : "Log or view purchases"}
-          variant="text" onPress={onPurchases} />
+        <AppButton title={onUpdated ? "Back to logging" : "Log purchase or income"}
+          variant="text" onPress={() => {
+            Keyboard.dismiss();
+            dismissConfirmation();
+            if (onPurchases) onPurchases();
+            else setActivityOpen(true);
+          }} />
       </View>
       {!!notice && <Text accessibilityLiveRegion="polite" style={ui.body}>{notice}</Text>}
       <SaveStatus />
@@ -120,7 +128,11 @@ function BalanceHome({ onPurchases, onUpdated }: {
       </View>
       <Text style={styles.caption}>Manage these amounts in Plan.</Text>
     </View>
-  </Screen>;
+  </Screen>
+    {activityOpen && <ActivitySheet onClose={() => setActivityOpen(false)}
+      onLogged={(message) => setConfirmation({ id: Date.now(), message })} />}
+    {confirmation && <Snackbar key={confirmation.id} message={confirmation.message} onDismiss={dismissConfirmation} />}
+  </>;
 }
 
 function formatTimestamp(value: string) {

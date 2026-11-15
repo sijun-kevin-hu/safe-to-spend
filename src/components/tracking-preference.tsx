@@ -7,8 +7,8 @@ import { useState, type PropsWithChildren } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 const choices = [
-  { value: "balance", title: "Update my balance", description: "Enter your current balance to refresh what’s safe to spend. No need to log each purchase." },
-  { value: "purchases", title: "Log purchases", description: "Add each purchase as you go to keep your balance and recent spending up to date." },
+  { value: "balance", title: "Update my balance", description: "Enter your current balance to refresh what’s safe to spend. No need to log purchases or income." },
+  { value: "purchases", title: "Log purchases & income", description: "Log spending and money received as you go to keep your balance up to date." },
 ] as const;
 
 export function TrackingPreferencePicker({ value, onChange }: {

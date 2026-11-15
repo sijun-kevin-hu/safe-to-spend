@@ -3,7 +3,8 @@ import { palette, ui } from "@/constants/design";
 import { Autosave, type SaveState } from "@/lib/autosave";
 import {
   calculateSavingsReserved,
-  recordPurchase,
+  recordTransaction,
+  type TransactionKind,
   updateTrackingBalance,
   type TrackingPreference,
   type TrackingState,
@@ -24,13 +25,15 @@ import { useAuth } from "./auth-context";
 
 type PlanContextValue = {
   saveState: SaveState;
+  supportsIncome: boolean;
+  supportsRecurringBills: boolean;
   balance: string;
   trackingPreference: TrackingPreference | null;
   setTrackingPreference: Dispatch<SetStateAction<TrackingPreference | null>>;
   balanceUpdatedAt: string | null;
   purchases: TrackingState["purchases"];
   updateBalance: (value: number) => void;
-  addPurchase: (amount: number, note?: string) => void;
+  addTransaction: (kind: TransactionKind, amount: number, note?: string) => void;
   savingsMode: SavingsMode;
   changeSavingsMode: (mode: SavingsMode) => void;
   savingsValue: string;
@@ -91,16 +94,19 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
   const balance = String(tracking.balance);
   function updateBalance(value: number) {
     const now = new Date().toISOString();
-    setTracking((current) => updateTrackingBalance(current, value, now));
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    setTracking((current) => updateTrackingBalance(current, value, now, id));
   }
-  function addPurchase(amount: number, note = "") {
-    const purchase = {
+  function addTransaction(kind: TransactionKind, amount: number, note = "") {
+    if (kind === "income" && !initialPlan.supportsIncome) return;
+    const transaction = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       amount: Math.round(amount * 100) / 100,
+      kind,
       note: note.trim(),
       createdAt: new Date().toISOString(),
     };
-    setTracking((current) => recordPurchase(current, purchase));
+    setTracking((current) => recordTransaction(current, transaction));
   }
   const [savingsMode, setSavingsMode] = useState<SavingsMode>(
     initialPlan.savingsPercentage === null ? "amount" : "percentage",
@@ -171,8 +177,10 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
   return (
     <PlanContext.Provider value={{
       saveState, balance, trackingPreference, setTrackingPreference,
+      supportsIncome: initialPlan.supportsIncome,
+      supportsRecurringBills: initialPlan.supportsRecurringBills,
       balanceUpdatedAt: tracking.balanceUpdatedAt, purchases: tracking.purchases,
-      updateBalance, addPurchase, savingsMode, changeSavingsMode, savingsValue, setSavingsValue,
+      updateBalance, addTransaction, savingsMode, changeSavingsMode, savingsValue, setSavingsValue,
       savingsReserved, validationError, billItems, setBillItems,
     }}>
       {children}

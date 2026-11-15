@@ -9,7 +9,7 @@ const app: express.Express = express();
 app.use(express.json({ limit: "1mb" }));
 const port = Number(process.env.PORT) || 3000;
 
-type PlanResponse = Plan | { error: string };
+type PlanResponse = (Plan & { supportsIncome: true; supportsRecurringBills: true }) | { error: string };
 type AuthResponse = { id: string; email: string | null } | { error: string };
 type ProfileResponse = Profile | null | { error: string };
 
@@ -116,6 +116,8 @@ app.get<{}, PlanResponse>("/plan", requireAuth, async (_req, res) => {
   if (planResult.data === null) {
     res.json({
       balance: 0,
+      supportsIncome: true,
+      supportsRecurringBills: true,
       trackingPreference,
       balanceUpdatedAt: null,
       purchases: [],
@@ -147,7 +149,7 @@ app.get<{}, PlanResponse>("/plan", requireAuth, async (_req, res) => {
     return;
   }
 
-  res.json(result.data);
+  res.json({ ...result.data, supportsIncome: true, supportsRecurringBills: true });
 });
 
 app.put<{}, PlanResponse, unknown>("/plan", requireAuth, async (req, res) => {
@@ -205,7 +207,7 @@ app.put<{}, PlanResponse, unknown>("/plan", requireAuth, async (req, res) => {
     }
   }
 
-  res.json(result.data);
+  res.json({ ...result.data, supportsIncome: true, supportsRecurringBills: true });
 });
 
 app.listen(port, () => {

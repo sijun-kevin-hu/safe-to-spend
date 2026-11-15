@@ -7,11 +7,23 @@ const planInputSchema = z.object({
   balanceUpdatedAt: z.iso.datetime().nullable().default(null),
   purchases: z.array(z.object({
     id: z.string().min(1).max(100),
-    amount: z.number().min(0.01),
+    amount: z.number(),
     createdAt: z.iso.datetime(),
     note: z.string().trim().max(120).optional(),
-  })).refine((items) => new Set(items.map((item) => item.id)).size === items.length,
-    { message: "Purchase IDs must be unique." }).default([]),
+    kind: z.enum(["purchase", "income", "balance_check_in"]).optional(),
+    balanceBefore: z.number().nullable().optional(),
+    balanceAfter: z.number().optional(),
+  }).refine((item) => {
+    const checkIn = item.kind === "balance_check_in";
+    if (!checkIn && item.amount < 0.01) return false;
+    const hasBalances = item.balanceBefore !== undefined || item.balanceAfter !== undefined;
+    if (!hasBalances) return !checkIn; // Legacy purchases/income have no snapshots.
+    if (item.balanceBefore === undefined || item.balanceAfter === undefined) return false;
+    if (item.balanceBefore === null) return checkIn && item.amount === 0;
+    const change = Math.round((item.balanceAfter - item.balanceBefore) * 100) / 100;
+    return change === (checkIn || item.kind === "income" ? item.amount : -item.amount);
+  }, { message: "Activity balance details must match the recorded change." })).refine((items) => new Set(items.map((item) => item.id)).size === items.length,
+    { message: "Transaction IDs must be unique." }).default([]),
   savingsAmount: z.number().nonnegative().nullable().default(null),
   savingsPercentage: z.number().min(0).max(100).nullable().default(null),
   billItems: z.array(billSchema),

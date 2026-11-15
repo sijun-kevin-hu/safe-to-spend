@@ -53,7 +53,7 @@ export default function PlanScreen() {
           onPress={() => openSection("bills")}
         />
         <PlanCard title="Balance tracking"
-          amount={trackingPreference === "purchases" ? "Log purchases" : "Update my balance"}
+          amount={trackingPreference === "purchases" ? "Log purchases & income" : "Update my balance"}
           description="Change your Home view"
           onPress={() => openSection("tracking")} />
       </>}
@@ -61,7 +61,7 @@ export default function PlanScreen() {
         <Text accessibilityRole="header" style={ui.title}>Balance tracking</Text>
         <Text style={ui.body}>Choose your Home view. You can open the other view anytime.</Text>
         <TrackingPreferencePicker value={trackingPreference} onChange={setTrackingPreference} />
-        <Text style={ui.body}>Changing this preference keeps your balance and purchases.</Text>
+        <Text style={ui.body}>Changing this preference keeps your balance and activity history.</Text>
       </>}
       {section === "savings" && <SavingsSection />}
       {section === "bills" && <BillsSection />}
