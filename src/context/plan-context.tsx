@@ -26,6 +26,8 @@ import { useAuth } from "./auth-context";
 
 type PlanContextValue = {
   saveState: SaveState;
+  savingsMethodMessage: string;
+  dismissSavingsMethodMessage: () => void;
   supportsIncome: boolean;
   supportsRecurringBills: boolean;
   supportsIncomeSavings: boolean;
@@ -128,6 +130,8 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
   }
   const [billItems, setBillItems] = useState(initialPlan.billItems);
   const [saveState, setSaveState] = useState<SaveState>("saved");
+  const [savingsMethodMessage, setSavingsMethodMessage] = useState("");
+  const pendingMethod = useRef<SavingsMode | null>(null);
   const queue = useRef<Autosave<PlanInput> | null>(null);
   const validationError = savingsError(savingsMode, savingsValue) || (savingsMode === "income" &&
     (!incomeReserveValue.trim() || !Number.isFinite(Math.round(Number(incomeReserveValue) * 100)) || Number(incomeReserveValue) < 0)
@@ -157,7 +161,14 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
 
   // Initialize from the loaded plan without overwriting it on mount.
   useEffect(() => {
-    const autosave = new Autosave(initialInput, (plan) => requestPlan(userId, plan), setSaveState);
+    const autosave = new Autosave(initialInput, async (plan) => {
+      await requestPlan(userId, plan);
+      const mode = plan.savingsIncomePercentage != null ? "income" : plan.savingsPercentage != null ? "percentage" : "amount";
+      if (pendingMethod.current === mode) {
+        pendingMethod.current = null;
+        setSavingsMethodMessage(`Switched to ${mode === "income" ? "From income" : mode === "amount" ? "Fixed amount" : "Of balance"}.`);
+      }
+    }, setSaveState);
     queue.current = autosave;
     return () => { autosave.dispose(); queue.current = null; };
   }, [initialPlan, userId]);
@@ -190,6 +201,8 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
   function changeSavingsMode(mode: SavingsMode) {
     if (mode === savingsMode) return;
     if (mode === "income" && !initialPlan.supportsIncomeSavings) return;
+    pendingMethod.current = mode;
+    setSavingsMethodMessage("");
     const currentBalance = Number(balance);
     const reserve = Number.isFinite(savingsReserved) ? savingsReserved : 0;
     setIncomeReserveDraft(null);
@@ -202,6 +215,7 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
 
   return (
     <PlanContext.Provider value={{
+      savingsMethodMessage, dismissSavingsMethodMessage: () => setSavingsMethodMessage(""),
       saveState, balance, trackingPreference, setTrackingPreference,
       supportsIncome: initialPlan.supportsIncome,
       supportsRecurringBills: initialPlan.supportsRecurringBills,

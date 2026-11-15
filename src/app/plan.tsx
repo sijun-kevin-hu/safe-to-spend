@@ -1,3 +1,4 @@
+import { Snackbar } from "@/components/snackbar";
 import { TrackingPreferencePicker } from "@/components/tracking-preference";
 import { AppButton } from "@/components/app-button";
 import { BillsSection } from "@/components/plan/bills-section";
@@ -16,7 +17,7 @@ type Section = "overview" | "savings" | "bills" | "tracking";
 
 export default function PlanScreen() {
   const [section, setSection] = useState<Section>("overview");
-  const { trackingPreference, setTrackingPreference, savingsReserved, savingsMode, savingsValue, billItems } = usePlan();
+  const { savingsMethodMessage, dismissSavingsMethodMessage, trackingPreference, setTrackingPreference, savingsReserved, savingsMode, savingsValue, billItems } = usePlan();
   const isFocused = useIsFocused();
   const billsTotal = billItems.reduce((total, bill) => total + bill.amount, 0);
 
@@ -35,6 +36,7 @@ export default function PlanScreen() {
   }
 
   return (
+    <>
     <Screen key={section}>
       {section !== "overview" && <AppButton title="‹ Back to Plan" variant="text" onPress={() => openSection("overview")} />}
       {section === "overview" && <>
@@ -68,6 +70,8 @@ export default function PlanScreen() {
       <SaveStatus />
       {section === "overview" && <PlanActions />}
     </Screen>
+    {!!savingsMethodMessage && <Snackbar message={savingsMethodMessage} onDismiss={dismissSavingsMethodMessage} />}
+    </>
   );
 }
 
