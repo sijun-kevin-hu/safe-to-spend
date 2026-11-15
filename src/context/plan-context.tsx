@@ -27,6 +27,7 @@ type PlanContextValue = {
   saveState: SaveState;
   supportsIncome: boolean;
   supportsRecurringBills: boolean;
+  supportsIncomeSavings: boolean;
   balance: string;
   trackingPreference: TrackingPreference | null;
   setTrackingPreference: Dispatch<SetStateAction<TrackingPreference | null>>;
@@ -37,6 +38,8 @@ type PlanContextValue = {
   savingsMode: SavingsMode;
   changeSavingsMode: (mode: SavingsMode) => void;
   savingsValue: string;
+  incomeReserveValue: string;
+  setIncomeReserveValue: (value: string) => void;
   setSavingsValue: Dispatch<SetStateAction<string>>;
   savingsReserved: number;
   validationError: string;
@@ -90,6 +93,7 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
     balance: initialPlan.balance,
     balanceUpdatedAt: initialPlan.balanceUpdatedAt,
     purchases: initialPlan.purchases,
+    incomeSavingsReserved: initialPlan.incomeSavingsReserved ?? 0,
   });
   const balance = String(tracking.balance);
   function updateBalance(value: number) {
@@ -106,24 +110,40 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
       note: note.trim(),
       createdAt: new Date().toISOString(),
     };
-    setTracking((current) => recordTransaction(current, transaction));
+    setIncomeReserveDraft(null);
+    setTracking((current) => recordTransaction(current, transaction,
+      savingsMode === "income" ? Number(savingsValue) : null));
   }
   const [savingsMode, setSavingsMode] = useState<SavingsMode>(
-    initialPlan.savingsPercentage === null ? "amount" : "percentage",
+    initialPlan.savingsIncomePercentage != null ? "income" : initialPlan.savingsPercentage === null ? "amount" : "percentage",
   );
   const [savingsValue, setSavingsValue] = useState(String(
-    initialPlan.savingsPercentage ?? initialPlan.savingsAmount ?? "",
+    initialPlan.savingsIncomePercentage ?? initialPlan.savingsPercentage ?? initialPlan.savingsAmount ?? "",
   ));
+  const [incomeReserveDraft, setIncomeReserveDraft] = useState<string | null>(null);
+  const incomeReserveValue = incomeReserveDraft ?? String(tracking.incomeSavingsReserved ?? 0);
+  function setIncomeReserveValue(value: string) {
+    setIncomeReserveDraft(value);
+    if (value.trim() && Number.isFinite(Math.round(Number(value) * 100)) && Number(value) >= 0) {
+      setTracking((current) => ({ ...current, incomeSavingsReserved: Math.round(Number(value) * 100) / 100 }));
+    }
+  }
   const [billItems, setBillItems] = useState(initialPlan.billItems);
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const queue = useRef<Autosave<PlanInput> | null>(null);
-  const validationError = savingsError(savingsMode, savingsValue);
+  const validationError = savingsError(savingsMode, savingsValue) || (savingsMode === "income" &&
+    (!incomeReserveValue.trim() || !Number.isFinite(Math.round(Number(incomeReserveValue) * 100)) || Number(incomeReserveValue) < 0)
+    ? "Enter a valid reserved amount." : "");
   const validBalance = !!balance.trim() && Number.isFinite(Number(balance));
-  const { savingsAmount, savingsPercentage } = savingsSetting(savingsMode, savingsValue);
-  const savingsReserved = calculateSavingsReserved(
+  const setting = savingsSetting(savingsMode, savingsValue);
+  const { savingsAmount, savingsPercentage } = setting;
+  const savingsIncomePercentage = setting.savingsIncomePercentage ?? null;
+  const savingsReserved = savingsMode === "income" ? tracking.incomeSavingsReserved ?? 0 : calculateSavingsReserved(
     Number(balance),
     savingsAmount,
     savingsPercentage,
+    savingsIncomePercentage,
+    tracking.incomeSavingsReserved ?? 0,
   );
   const initialInput: PlanInput = {
     balance: initialPlan.balance,
@@ -132,6 +152,8 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
     purchases: initialPlan.purchases,
     savingsAmount: initialPlan.savingsAmount,
     savingsPercentage: initialPlan.savingsPercentage,
+    savingsIncomePercentage: initialPlan.savingsIncomePercentage ?? null,
+    incomeSavingsReserved: initialPlan.incomeSavingsReserved ?? 0,
     billItems: initialPlan.billItems,
   };
 
@@ -150,6 +172,8 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
       purchases: tracking.purchases,
       savingsAmount,
       savingsPercentage,
+      savingsIncomePercentage,
+      incomeSavingsReserved: tracking.incomeSavingsReserved ?? 0,
       billItems,
     } : null);
   }, [
@@ -159,6 +183,7 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
     tracking,
     savingsAmount,
     savingsPercentage,
+    savingsIncomePercentage,
     savingsReserved,
     validationError,
     billItems,
@@ -166,9 +191,12 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
 
   function changeSavingsMode(mode: SavingsMode) {
     if (mode === savingsMode) return;
+    if (mode === "income" && !initialPlan.supportsIncomeSavings) return;
     const currentBalance = Number(balance);
     const reserve = Number.isFinite(savingsReserved) ? savingsReserved : 0;
-    setSavingsValue(mode === "percentage"
+    setIncomeReserveDraft(null);
+    if (mode === "income") setTracking((current) => ({ ...current, incomeSavingsReserved: reserve }));
+    setSavingsValue(mode === "income" ? (savingsMode === "percentage" ? savingsValue : "10") : mode === "percentage"
       ? String(currentBalance > 0 ? Math.min(100, Math.round(reserve / currentBalance * 10000) / 100) : 0)
       : String(reserve));
     setSavingsMode(mode);
@@ -179,9 +207,10 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
       saveState, balance, trackingPreference, setTrackingPreference,
       supportsIncome: initialPlan.supportsIncome,
       supportsRecurringBills: initialPlan.supportsRecurringBills,
+      supportsIncomeSavings: initialPlan.supportsIncomeSavings,
       balanceUpdatedAt: tracking.balanceUpdatedAt, purchases: tracking.purchases,
       updateBalance, addTransaction, savingsMode, changeSavingsMode, savingsValue, setSavingsValue,
-      savingsReserved, validationError, billItems, setBillItems,
+      savingsReserved, validationError, incomeReserveValue, setIncomeReserveValue, billItems, setBillItems,
     }}>
       {children}
     </PlanContext.Provider>

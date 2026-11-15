@@ -50,6 +50,13 @@ export function markBillPaid(bills: Bill[], id: string, nextId: string): Bill[] 
   return bills.map((bill) => bill.id === id ? next : bill);
 }
 
+export function updateBillTemplate(bill: Bill, input: Pick<BillRecurrence, "name" | "amount" | "frequency" | "nextDueDate">): Bill {
+  if (!bill.recurrence) throw new Error("This bill does not repeat.");
+  const sameSchedule = input.nextDueDate === bill.recurrence.nextDueDate && input.frequency === bill.recurrence.frequency;
+  // Changing an amount must not replace a Jan 31 anchor with a clamped Feb 28.
+  return { ...bill, recurrence: { ...input, anchorDate: sameSchedule ? bill.recurrence.anchorDate : input.nextDueDate } };
+}
+
 export function isValidBill(value: unknown): value is Bill {
   if (!value || typeof value !== "object") return false;
   const bill = value as Bill;

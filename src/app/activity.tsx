@@ -109,6 +109,10 @@ export default function ActivityScreen() {
                   </View>
                 </> : <Text style={styles.detailNote}>Balance details aren’t available for this older entry.</Text>}
                 {checkIn && !starting && <Text style={styles.detailNote}>You replaced your balance with this check-in.</Text>}
+                {entry.savingsAllocated !== undefined && <View style={styles.detailLine}>
+                  <Text style={styles.caption}>Set aside for savings</Text>
+                  <Text style={styles.detailAmount}>{formatCurrency(entry.savingsAllocated)}</Text>
+                </View>}
               </View>}
             </Pressable>
           </View>;

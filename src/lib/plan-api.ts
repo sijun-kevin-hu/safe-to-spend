@@ -36,12 +36,15 @@ export async function requestPlan(
       !value ||
       !Number.isFinite(value.balance) ||
       !Array.isArray(value.billItems) ||
-      !value.billItems.every(isValidBill)
+      !value.billItems.every(isValidBill) ||
+      new Set(value.billItems.map((bill: { id: string }) => bill.id)).size !== value.billItems.length
     )
       throw new Error("The server returned an invalid plan.");
     const legacyResponse = !("savingsAmount" in value) && !("savingsReserved" in value);
     const savingsAmount = legacyResponse ? value.savingsGoal : value.savingsAmount ?? null;
     const savingsPercentage = value.savingsPercentage ?? null;
+    const savingsIncomePercentage = value.savingsIncomePercentage ?? null;
+    const incomeSavingsReserved = value.incomeSavingsReserved ?? 0;
     const savingsReserved = legacyResponse ? value.savingsGoal : value.savingsReserved;
     const validAmount = savingsAmount === null || (Number.isFinite(savingsAmount) && savingsAmount >= 0);
     const validPercentage = savingsPercentage === null || (
@@ -50,9 +53,11 @@ export async function requestPlan(
     if (
       !validAmount ||
       !validPercentage ||
+      (savingsIncomePercentage !== null && (!Number.isFinite(savingsIncomePercentage) || savingsIncomePercentage < 0 || savingsIncomePercentage > 100)) ||
+      !Number.isFinite(incomeSavingsReserved) || incomeSavingsReserved < 0 ||
       !Number.isFinite(savingsReserved) ||
       savingsReserved < 0 ||
-      (savingsAmount !== null && savingsPercentage !== null)
+      [savingsAmount, savingsPercentage, savingsIncomePercentage].filter((item) => item !== null).length > 1
     ) {
       throw new Error("The server returned an invalid savings setting.");
     }
@@ -64,6 +69,8 @@ export async function requestPlan(
       legacyResponse ||
       savingsAmount !== plan.savingsAmount ||
       savingsPercentage !== plan.savingsPercentage
+      || savingsIncomePercentage !== (plan.savingsIncomePercentage ?? null)
+      || incomeSavingsReserved !== (plan.incomeSavingsReserved ?? 0)
     )) {
       throw new Error("The server did not save your savings setting. Please update the API.");
     }
@@ -78,6 +85,7 @@ export async function requestPlan(
         (item.kind === "balance_check_in" || item.amount >= 0.01) &&
         (item.kind === undefined || ["purchase", "income", "balance_check_in"].includes(item.kind)) &&
         validBalanceDetails(item) &&
+        (item.savingsAllocated === undefined || (item.kind === "income" && Number.isFinite(item.savingsAllocated) && item.savingsAllocated >= 0 && item.savingsAllocated <= item.amount)) &&
         typeof item.createdAt === "string" && Number.isFinite(Date.parse(item.createdAt)) &&
         (item.note === undefined || (typeof item.note === "string" && item.note.length <= 120))) ||
       new Set(purchases.map((item: ActivityEntry) => item.id)).size !== purchases.length
@@ -91,7 +99,7 @@ export async function requestPlan(
         const sent = plan.purchases[index];
         return item.id !== sent.id || item.amount !== sent.amount || item.createdAt !== sent.createdAt ||
           (item.note ?? "") !== (sent.note ?? "") || (item.kind ?? "purchase") !== (sent.kind ?? "purchase") ||
-          item.balanceBefore !== sent.balanceBefore || item.balanceAfter !== sent.balanceAfter;
+          item.balanceBefore !== sent.balanceBefore || item.balanceAfter !== sent.balanceAfter || item.savingsAllocated !== sent.savingsAllocated;
       }))
     )) throw new Error("The server did not save your balance or transactions. Please update the API.");
     return {
@@ -101,9 +109,12 @@ export async function requestPlan(
       purchases,
       savingsAmount,
       savingsPercentage,
+      savingsIncomePercentage,
+      incomeSavingsReserved,
       savingsReserved,
       supportsIncome: value.supportsIncome === true,
       supportsRecurringBills: value.supportsRecurringBills === true,
+      supportsIncomeSavings: value.supportsIncomeSavings === true,
       billItems: value.billItems,
     };
   } finally {

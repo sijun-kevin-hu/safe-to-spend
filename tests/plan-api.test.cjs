@@ -7,7 +7,7 @@ function loadApi(path) {
     compilerOptions: { module: ts.ModuleKind.CommonJS },
   }).outputText;
   const output = {};
-  new Function('exports', 'require', source)(output, () => ({
+  new Function('exports', 'require', source)(output, (name) => name === './bills' ? loadApi('src/lib/bills.ts') : ({
     supabase: { auth: { getSession: async () => ({ data: {
       session: { user: { id: 'preview' }, access_token: 'mock' },
     } }) } },
@@ -99,5 +99,49 @@ test('balance history survives reload and save confirmation checks before/after 
     const withIncome = { ...input, balance: 100, purchases: [income] };
     response = { ...withIncome, savingsReserved: 0, purchases: [{ ...income, balanceBefore: undefined, balanceAfter: undefined }] };
     await assert.rejects(requestPlan('preview', withIncome), /did not save/);
+  } finally { global.fetch = originalFetch; }
+});
+
+test('bill save confirmation preserves schedules and rejects APIs that drop recurrence', async () => {
+  const originalFetch = global.fetch;
+  const bill = { id: 'rent', name: 'Rent', amount: 1000, dueDate: '2027-01-31', recurrence: {
+    frequency: 'monthly', name: 'Rent', amount: 1000, anchorDate: '2027-01-31', nextDueDate: '2027-02-28',
+  } };
+  const plan = { ...input, billItems: [bill] };
+  let response = { ...plan, savingsReserved: 0, supportsRecurringBills: true, billItems: [{
+    recurrence: { nextDueDate: '2027-02-28', anchorDate: '2027-01-31', amount: 1000, name: 'Rent', frequency: 'monthly' },
+    dueDate: bill.dueDate, amount: 1000, name: 'Rent', id: 'rent',
+  }] };
+  global.fetch = async () => ({ ok: true, json: async () => response });
+  try {
+    assert.equal((await requestPlan('preview', plan)).supportsRecurringBills, true);
+    assert.deepEqual((await requestPlan('preview')).billItems[0].recurrence, bill.recurrence);
+    response = { ...response, billItems: [{ ...bill, recurrence: undefined }] };
+    await assert.rejects(requestPlan('preview', plan), /did not save your bills/);
+    response = { ...response, billItems: [{ ...bill, recurrence: { ...bill.recurrence, nextDueDate: '2027-01-01' } }] };
+    await assert.rejects(requestPlan('preview'), /invalid plan/);
+    response = { ...response, billItems: [bill, bill] };
+    await assert.rejects(requestPlan('preview'), /invalid plan/);
+  } finally { global.fetch = originalFetch; }
+});
+
+test('income savings and per-entry allocations survive reload and require exact save confirmation', async () => {
+  const originalFetch = global.fetch;
+  const plan = { ...input, balance: 1500, savingsIncomePercentage: 10, incomeSavingsReserved: 200,
+    purchases: [{ id: 'pay', kind: 'income', amount: 500, createdAt: input.balanceUpdatedAt,
+      balanceBefore: 1000, balanceAfter: 1500, savingsAllocated: 50 }] };
+  let response = { ...plan, savingsReserved: 200, supportsIncomeSavings: true };
+  global.fetch = async () => ({ ok: true, json: async () => response });
+  try {
+    const loaded = await requestPlan('preview', plan);
+    assert.equal(loaded.savingsReserved, 200);
+    assert.equal(loaded.supportsIncomeSavings, true);
+    assert.equal((await requestPlan('preview')).incomeSavingsReserved, 200);
+    response = { ...response, incomeSavingsReserved: 150 };
+    await assert.rejects(requestPlan('preview', plan), /did not save your savings/);
+    response = { ...response, incomeSavingsReserved: 200, purchases: [{ ...plan.purchases[0], savingsAllocated: undefined }] };
+    await assert.rejects(requestPlan('preview', plan), /did not save your balance or transactions/);
+    response = { ...response, purchases: [{ ...plan.purchases[0], savingsAllocated: 501 }] };
+    await assert.rejects(requestPlan('preview'), /invalid tracking data/);
   } finally { global.fetch = originalFetch; }
 });

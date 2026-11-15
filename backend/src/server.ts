@@ -2,6 +2,7 @@ import { requireAuth } from "./middleware/require-auth";
 import { planSchema } from "./schemas/plan";
 import { profileSchema, type Profile } from "./schemas/profile";
 import type { Plan } from "./types/plan";
+import { readIncomeSavings } from "./lib/income-savings";
 
 import express = require("express");
 
@@ -9,7 +10,7 @@ const app: express.Express = express();
 app.use(express.json({ limit: "1mb" }));
 const port = Number(process.env.PORT) || 3000;
 
-type PlanResponse = (Plan & { supportsIncome: true; supportsRecurringBills: true }) | { error: string };
+type PlanResponse = (Plan & { supportsIncome: true; supportsRecurringBills: true; supportsIncomeSavings: boolean }) | { error: string };
 type AuthResponse = { id: string; email: string | null } | { error: string };
 type ProfileResponse = Profile | null | { error: string };
 
@@ -89,7 +90,7 @@ app.put<{}, ProfileResponse, unknown>("/profile", requireAuth, async (req, res) 
 app.get<{}, PlanResponse>("/plan", requireAuth, async (_req, res) => {
   const user = res.locals.user;
   const userSupabase = res.locals.supabase;
-  const [planResult, profileResult] = await Promise.all([
+  const [planResult, profileResult, incomeSavings] = await Promise.all([
     userSupabase
       .from("plans")
       .select("balance, savings_goal, savings_amount, savings_percentage, bill_items, balance_updated_at, purchases")
@@ -100,12 +101,14 @@ app.get<{}, PlanResponse>("/plan", requireAuth, async (_req, res) => {
       .select("tracking_preference")
       .eq("id", user.id)
       .maybeSingle(),
+    readIncomeSavings(userSupabase, user.id),
   ]);
 
-  if (planResult.error || profileResult.error) {
+  if (planResult.error || profileResult.error || incomeSavings.error) {
     console.error("Unable to load plan from Supabase:", {
       planError: planResult.error,
       profileError: profileResult.error,
+      incomeSavingsError: incomeSavings.error,
     });
     res.status(500).json({ error: "Unable to load plan." });
     return;
@@ -118,11 +121,14 @@ app.get<{}, PlanResponse>("/plan", requireAuth, async (_req, res) => {
       balance: 0,
       supportsIncome: true,
       supportsRecurringBills: true,
+      supportsIncomeSavings: incomeSavings.supported,
       trackingPreference,
       balanceUpdatedAt: null,
       purchases: [],
       savingsAmount: null,
       savingsPercentage: null,
+      savingsIncomePercentage: null,
+      incomeSavingsReserved: 0,
       savingsReserved: 0,
       billItems: [],
     });
@@ -138,8 +144,10 @@ app.get<{}, PlanResponse>("/plan", requireAuth, async (_req, res) => {
     trackingPreference,
     balanceUpdatedAt: data.balance_updated_at ? new Date(data.balance_updated_at).toISOString() : null,
     purchases: data.purchases,
-    savingsAmount: data.savings_percentage === null ? storedAmount : null,
+    savingsAmount: incomeSavings.percentage !== null ? null : data.savings_percentage === null ? storedAmount : null,
     savingsPercentage: data.savings_percentage === null ? null : Number(data.savings_percentage),
+    savingsIncomePercentage: incomeSavings.percentage,
+    incomeSavingsReserved: incomeSavings.reserved,
     billItems: data.bill_items,
   });
 
@@ -149,10 +157,14 @@ app.get<{}, PlanResponse>("/plan", requireAuth, async (_req, res) => {
     return;
   }
 
-  res.json({ ...result.data, supportsIncome: true, supportsRecurringBills: true });
+  res.json({ ...result.data, supportsIncome: true, supportsRecurringBills: true, supportsIncomeSavings: incomeSavings.supported });
 });
 
 app.put<{}, PlanResponse, unknown>("/plan", requireAuth, async (req, res) => {
+  if (req.body && typeof req.body === "object" &&
+    (("savingsIncomePercentage" in req.body) !== ("incomeSavingsReserved" in req.body))) {
+    res.status(400).json({ error: "Include both income-savings fields." }); return;
+  }
   const result = planSchema.safeParse(req.body);
   if (!result.success) {
     res.status(400).json({ error: "Invalid plan." });
@@ -161,6 +173,21 @@ app.put<{}, PlanResponse, unknown>("/plan", requireAuth, async (req, res) => {
 
   const user = res.locals.user;
   const userSupabase = res.locals.supabase;
+  const incomeSavings = await readIncomeSavings(userSupabase, user.id);
+  if (incomeSavings.error) {
+    res.status(500).json({ error: "Unable to verify savings settings." }); return;
+  }
+  const includesIncomeSavings = Boolean(req.body && typeof req.body === "object" &&
+    "savingsIncomePercentage" in req.body && "incomeSavingsReserved" in req.body);
+  if (!incomeSavings.supported && (result.data.savingsIncomePercentage !== null || result.data.incomeSavingsReserved !== 0)) {
+    res.status(503).json({ error: "Income-based savings is not available yet." }); return;
+  }
+  if (!includesIncomeSavings && incomeSavings.percentage !== null) {
+    res.status(409).json({ error: "Update the app to preserve your income-based savings." }); return;
+  }
+  const savedPlan = { ...result.data,
+    savingsIncomePercentage: includesIncomeSavings ? result.data.savingsIncomePercentage : incomeSavings.percentage,
+    incomeSavingsReserved: includesIncomeSavings ? result.data.incomeSavingsReserved : incomeSavings.reserved };
   const includesTrackingPreference = Boolean(
     req.body &&
     typeof req.body === "object" &&
@@ -174,6 +201,10 @@ app.put<{}, PlanResponse, unknown>("/plan", requireAuth, async (req, res) => {
       savings_goal: result.data.savingsReserved,
       savings_amount: result.data.savingsAmount,
       savings_percentage: result.data.savingsPercentage,
+      ...(incomeSavings.supported && includesIncomeSavings ? {
+        savings_income_percentage: savedPlan.savingsIncomePercentage,
+        income_savings_reserved: savedPlan.incomeSavingsReserved,
+      } : {}),
       bill_items: result.data.billItems,
       // Older clients omit these fields; do not erase tracking history.
       ...(includesTrackingPreference ? {
@@ -207,7 +238,7 @@ app.put<{}, PlanResponse, unknown>("/plan", requireAuth, async (req, res) => {
     }
   }
 
-  res.json({ ...result.data, supportsIncome: true, supportsRecurringBills: true });
+  res.json({ ...savedPlan, supportsIncome: true, supportsRecurringBills: true, supportsIncomeSavings: incomeSavings.supported });
 });
 
 app.listen(port, () => {

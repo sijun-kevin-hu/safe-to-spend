@@ -19,7 +19,7 @@ export function ActivityContent({ onBalance, compact = false, onSaved }: {
   onSaved?: (message: string) => void;
 }) {
   const { balance, balanceUpdatedAt, purchases, addTransaction, savingsReserved,
-    savingsMode, billItems, validationError, saveState, supportsIncome } = usePlan();
+    savingsMode, savingsValue, billItems, validationError, saveState, supportsIncome } = usePlan();
   const [kind, setKind] = useState<TransactionKind>("purchase");
   const isIncome = kind === "income";
   const entryName = isIncome ? "Income" : "Purchase";
@@ -131,6 +131,11 @@ export function ActivityContent({ onBalance, compact = false, onSaved }: {
       {!!error && <Text accessibilityRole="alert" style={ui.error}>{error}</Text>}
       {isIncome && savingsMode === "percentage" && <Text style={styles.caption}>
         Your percentage savings reserve also updates with your balance.
+      </Text>}
+      {isIncome && savingsMode === "income" && <Text style={styles.caption}>
+        {Number.isFinite(Number(amount)) && Number(amount) >= 0.01 && !validationError
+          ? `${formatCurrency(Math.round(Number(amount) * Number(savingsValue)) / 100)} goes to savings (${savingsValue}%).`
+          : `${savingsValue}% of this income will go to your savings reserve.`}
       </Text>}
       <AppButton title={isIncome ? "Add income" : "Add purchase"}
         disabled={!!pendingConfirmation || saveState !== "saved" || (isIncome && !supportsIncome)} onPress={submit} />

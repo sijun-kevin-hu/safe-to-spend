@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { planSchema } = require('../dist/schemas/plan');
 const { profileSchema } = require('../dist/schemas/profile');
+const { billSchema } = require('../dist/schemas/bill');
 const base = {
   balance: 1234.56,
   savingsAmount: 75,
@@ -112,6 +113,45 @@ test('API preserves accurate balance check-ins and transaction snapshots', () =>
     { ...checkIn, balanceAfter: undefined }, { ...start, amount: 100 },
     { ...income, balanceBefore: null }, { ...purchase, balanceAfter: 140 },
   ]) assert.equal(planSchema.safeParse({ ...base, purchases: [entry] }).success, false);
+});
+
+test('recurring bill templates survive validation and keep only the supplied unpaid occurrence', () => {
+  const bill = { id: 'rent', name: 'Rent', amount: 1000, dueDate: '2027-01-31', recurrence: {
+    frequency: 'monthly', name: 'Rent', amount: 1100, anchorDate: '2027-02-28', nextDueDate: '2027-02-28',
+  } };
+  const plan = planSchema.parse({ ...base, billItems: [bill] });
+  assert.deepEqual(plan.billItems, [bill]);
+  assert.equal(plan.balance, base.balance, 'bill actions must not deduct from the balance');
+  assert.equal(planSchema.parse({ ...base, billItems: [{ ...bill, recurrence: undefined }] }).billItems.length, 1);
+  for (const invalid of [
+    { ...bill, dueDate: '2027-02-30' }, { ...bill, recurrence: null },
+    { ...bill, recurrence: { ...bill.recurrence, frequency: 'daily' } },
+    { ...bill, recurrence: { ...bill.recurrence, nextDueDate: '2027-01-31' } },
+    { ...bill, recurrence: { ...bill.recurrence, anchorDate: '2028-01-01' } },
+    { ...bill, recurrence: { ...bill.recurrence, name: ' ' } },
+    { ...bill, recurrence: { ...bill.recurrence, amount: -1 } },
+  ]) assert.equal(billSchema.safeParse(invalid).success, false);
+  assert.equal(planSchema.safeParse({ ...base, billItems: [bill, bill] }).success, false);
+});
+
+test('income-based reserves are independent of balance and mutually exclusive with legacy methods', () => {
+  const input = { ...base, savingsAmount: null, savingsIncomePercentage: 10, incomeSavingsReserved: 200 };
+  for (const balance of [1500, 100, 0, -20]) assert.equal(planSchema.parse({ ...input, balance }).savingsReserved, 200);
+  assert.equal(planSchema.parse({ ...input, savingsIncomePercentage: 20 }).savingsReserved, 200);
+  assert.equal(planSchema.parse(base).savingsIncomePercentage, null);
+  assert.equal(planSchema.parse(base).incomeSavingsReserved, 0);
+  for (const invalid of [
+    { savingsIncomePercentage: -1 }, { savingsIncomePercentage: 101 }, { incomeSavingsReserved: -1 },
+    { savingsAmount: 20 }, { savingsPercentage: 10 },
+  ]) assert.equal(planSchema.safeParse({ ...input, ...invalid }).success, false);
+});
+
+test('income allocation metadata is optional for legacy records and bounded by received income', () => {
+  const income = { id: 'pay', kind: 'income', amount: 100, createdAt: '2026-11-15T12:00:00.000Z', savingsAllocated: 10 };
+  assert.equal(planSchema.parse({ ...base, purchases: [income] }).purchases[0].savingsAllocated, 10);
+  for (const invalid of [{ ...income, savingsAllocated: 101 }, { ...income, savingsAllocated: -1 }, { ...income, kind: 'purchase' }]) {
+    assert.equal(planSchema.safeParse({ ...base, purchases: [invalid] }).success, false);
+  }
 });
 
 test('profiles require a trimmed display name and valid non-future date of birth', () => {

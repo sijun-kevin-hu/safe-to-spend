@@ -56,7 +56,7 @@ Tracking preferences now belong to `profiles`, while balances and purchase histo
 
 This project does not preserve tracking preferences previously stored in `plans`.
 
-The plan contract accepts one savings input: `savingsAmount`, `savingsPercentage`, or neither. Both inputs are nullable, but they cannot both contain values. Responses include the calculated `savingsReserved`, which percentage plans derive from the nonnegative current balance and round to cents.
+The plan contract accepts one savings strategy: `savingsAmount`, `savingsPercentage`, `savingsIncomePercentage`, or none. These inputs are nullable and mutually exclusive. Responses include the calculated `savingsReserved`, which percentage plans derive from the nonnegative current balance and round to cents.
 
 The database keeps the old `savings_goal` column populated with the calculated reserve during rollout. New clients do not use it as an input.
 
@@ -82,3 +82,25 @@ Plan responses advertise `supportsIncome: true`. The client prevents income subm
 Production was updated on November 15, 2026. Health returns 200, and plan/profile/auth endpoints reject unauthenticated requests with 401. Signed-in production writes have not been tested in this task.
 
 Balance check-in history and before/after snapshots were deployed to production on November 15, 2026. Existing JSONB storage supports the new entry shape without a database migration. Older entries are retained without reconstructing unknown balance details.
+
+## Recurring bills
+
+Each bill may include `recurrence` with `frequency` (`weekly`, `biweekly`, `monthly`, `yearly`), future `name` and `amount` defaults, `anchorDate`, and `nextDueDate`. Dates are valid local calendar strings (`YYYY-MM-DD`); the next repeat must be after the current due date. One-time bills omit this object. Bill IDs are unique within a plan.
+
+The client reserves one outstanding occurrence per bill. Mark paid removes a one-time bill or replaces a recurring occurrence with the next one and a new ID. Balance and purchase/activity history remain unchanged. Overdue schedules advance a single payment at a time, and monthly/yearly calculations preserve the anchor through shorter months and leap years.
+
+Editing this bill preserves future defaults. Editing future bills preserves the current payment; amount/name-only changes keep the original anchor. Stopping recurrence retains the current unpaid occurrence. Removing a recurring bill removes the current occurrence and template together.
+
+The API returns `supportsRecurringBills: true`. Recurrence is stored inside the existing `bill_items` JSONB, so no new SQL migration is required. Client save confirmation checks all bill and recurrence fields; deploy this API before enabling recurring setup. Production deployment on November 15, 2026 is READY; health/auth checks pass, and signed-in production persistence/account isolation have been verified.
+
+## Income-based savings
+
+Apply `../supabase/migrations/20261115164407_income_based_savings.sql` after legacy migrations 001–005. This additive migration is applied and recorded in production. Existing financial values were preserved. Legacy migrations were applied outside Supabase migration history; do not replay the profile-creation migration against the hosted database.
+
+`supportsIncomeSavings` is true only when both new columns exist. `savingsIncomePercentage` selects From income; `incomeSavingsReserved` stores the accumulated virtual reserve. Logging income adds the rounded share once and stores optional `savingsAllocated` on that activity entry. Gross income still increases the balance fully. Purchases and check-ins preserve the reserve. Rate changes affect future entries, and the user can adjust Already reserved after moving money out of the tracked balance.
+
+Deploy the schema before this API and client. Legacy clients cannot overwrite an active income strategy: omitted new fields return 409; partial fields return 400. Missing schema disables the strategy while legacy methods remain available. Whole-plan snapshot writes retain the existing concurrency model.
+
+Verification: 47 unit/API tests, frontend/backend TypeScript, backend build, web export, browser flows at 320px, local PostgreSQL migration/constraint/RLS checks, and live authenticated two-account profile/plan persistence, allocation, retry, reload, recurrence metadata, validation and RLS isolation passed. Native-device testing remains pending.
+
+Existing Supabase advisor findings remain unchanged: trigger-function execution grants ([linter guidance](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable)) and disabled [leaked-password protection](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection). No authentication settings were changed.

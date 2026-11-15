@@ -8,6 +8,7 @@ export type ActivityEntry = {
   kind?: TransactionKind | "balance_check_in";
   balanceBefore?: number | null;
   balanceAfter?: number;
+  savingsAllocated?: number;
 };
 export type Transaction = Omit<ActivityEntry, "kind"> & { kind?: TransactionKind };
 export type TrackingState = {
@@ -15,6 +16,7 @@ export type TrackingState = {
   balanceUpdatedAt: string | null;
   // Keep the existing API/JSONB field name for compatibility.
   purchases: ActivityEntry[];
+  incomeSavingsReserved?: number;
 };
 
 // The balance already includes logged transactions. A check-in replaces it outright.
@@ -30,25 +32,34 @@ export function updateTrackingBalance(state: TrackingState, balance: number, now
   return { ...state, balance: balanceAfter, balanceUpdatedAt: now, purchases: [entry, ...state.purchases] };
 }
 
-export function recordTransaction(state: TrackingState, transaction: Transaction): TrackingState {
+export function recordTransaction(state: TrackingState, transaction: Transaction, savingsIncomePercentage: number | null = null): TrackingState {
   const kind = transaction.kind ?? "purchase";
   if (kind !== "purchase" && kind !== "income") throw new Error("Choose purchase or income.");
   if (!Number.isFinite(transaction.amount) || transaction.amount < 0.01 || transaction.amount > 1e12) {
     throw new Error(`Enter a valid ${kind} amount of at least $0.01.`);
   }
   if (state.purchases.some((item) => item.id === transaction.id)) return state;
+  if (savingsIncomePercentage !== null && (!Number.isFinite(savingsIncomePercentage) || savingsIncomePercentage < 0 || savingsIncomePercentage > 100)) {
+    throw new Error("Enter a percentage from 0 to 100.");
+  }
   const amount = Math.round(transaction.amount * 100) / 100;
   const balance = Math.round((state.balance + (kind === "income" ? amount : -amount)) * 100) / 100;
   if (!Number.isFinite(balance)) throw new Error("Enter a smaller amount.");
+  const allocate = kind === "income" && savingsIncomePercentage !== null;
+  const savingsAllocated = allocate ? Math.round(amount * savingsIncomePercentage!) / 100 : 0;
+  const incomeSavingsReserved = Math.round(((state.incomeSavingsReserved ?? 0) + savingsAllocated) * 100) / 100;
+  if (!Number.isFinite(incomeSavingsReserved)) throw new Error("Enter a smaller amount.");
   return { ...state, balance, purchases: [{ ...transaction, amount,
-    balanceBefore: state.balance, balanceAfter: balance }, ...state.purchases] };
+    balanceBefore: state.balance, balanceAfter: balance,
+    ...(allocate ? { savingsAllocated } : {}) }, ...state.purchases],
+    ...(allocate ? { incomeSavingsReserved } : {}) };
 }
 
 export function recordPurchase(state: TrackingState, purchase: Omit<Transaction, "kind">): TrackingState {
   return recordTransaction(state, purchase);
 }
 
-export type SavingsMode = "amount" | "percentage";
+export type SavingsMode = "amount" | "percentage" | "income";
 
 export type PlanInput = {
   balance: number;
@@ -57,6 +68,8 @@ export type PlanInput = {
   purchases: ActivityEntry[];
   savingsAmount: number | null;
   savingsPercentage: number | null;
+  savingsIncomePercentage?: number | null;
+  incomeSavingsReserved?: number;
   billItems: Bill[];
 };
 
@@ -64,21 +77,27 @@ export type StoredPlan = PlanInput & {
   savingsReserved: number;
   supportsIncome: boolean;
   supportsRecurringBills: boolean;
+  supportsIncomeSavings: boolean;
 };
 
 export function calculateSavingsReserved(
   balance: number,
   savingsAmount: number | null,
   savingsPercentage: number | null,
+  savingsIncomePercentage: number | null = null,
+  incomeSavingsReserved = 0,
 ) {
-  const amount = savingsPercentage === null
+  const amount = savingsIncomePercentage !== null ? incomeSavingsReserved : savingsPercentage === null
     ? savingsAmount ?? 0
     : Math.max(0, balance) * savingsPercentage / 100;
   return Math.round((amount + Number.EPSILON) * 100) / 100;
 }
 
-export function savingsSetting(mode: SavingsMode, value: string) {
+export function savingsSetting(mode: SavingsMode, value: string): {
+  savingsAmount: number | null; savingsPercentage: number | null; savingsIncomePercentage?: number | null;
+} {
   const parsedValue = value.trim() === "" ? null : Number(value);
+  if (mode === "income") return { savingsAmount: null, savingsPercentage: null, savingsIncomePercentage: parsedValue };
   return mode === "amount"
     ? { savingsAmount: parsedValue, savingsPercentage: null }
     : { savingsAmount: null, savingsPercentage: parsedValue };
@@ -86,7 +105,7 @@ export function savingsSetting(mode: SavingsMode, value: string) {
 
 export function savingsError(mode: SavingsMode, value: string) {
   const amount = Number(value);
-  if (mode === "percentage" && (!value.trim() || !Number.isFinite(amount) || amount < 0 || amount > 100)) {
+  if (mode !== "amount" && (!value.trim() || !Number.isFinite(amount) || amount < 0 || amount > 100)) {
     return "Enter a percentage from 0 to 100.";
   }
   if (!Number.isFinite(amount) || amount < 0) return "Enter a valid savings amount.";

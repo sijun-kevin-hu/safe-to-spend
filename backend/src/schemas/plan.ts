@@ -13,7 +13,9 @@ const planInputSchema = z.object({
     kind: z.enum(["purchase", "income", "balance_check_in"]).optional(),
     balanceBefore: z.number().nullable().optional(),
     balanceAfter: z.number().optional(),
+    savingsAllocated: z.number().nonnegative().optional(),
   }).refine((item) => {
+    if (item.savingsAllocated !== undefined && (item.kind !== "income" || item.savingsAllocated > item.amount)) return false;
     const checkIn = item.kind === "balance_check_in";
     if (!checkIn && item.amount < 0.01) return false;
     const hasBalances = item.balanceBefore !== undefined || item.balanceAfter !== undefined;
@@ -26,7 +28,10 @@ const planInputSchema = z.object({
     { message: "Transaction IDs must be unique." }).default([]),
   savingsAmount: z.number().nonnegative().nullable().default(null),
   savingsPercentage: z.number().min(0).max(100).nullable().default(null),
-  billItems: z.array(billSchema),
+  savingsIncomePercentage: z.number().min(0).max(100).nullable().default(null),
+  incomeSavingsReserved: z.number().nonnegative().default(0),
+  billItems: z.array(billSchema).refine((items) => new Set(items.map((bill) => bill.id)).size === items.length,
+    { message: "Bill IDs must be unique." }),
 });
 
 export const planSchema = z.preprocess((value) => {
@@ -40,11 +45,11 @@ export const planSchema = z.preprocess((value) => {
   }
   return value;
 }, planInputSchema).refine(
-  ({ savingsAmount, savingsPercentage }) =>
-    savingsAmount === null || savingsPercentage === null,
-  { message: "Choose either a savings amount or percentage, not both." },
+  ({ savingsAmount, savingsPercentage, savingsIncomePercentage }) =>
+    [savingsAmount, savingsPercentage, savingsIncomePercentage].filter((value) => value !== null).length <= 1,
+  { message: "Choose one savings method." },
 ).transform((plan) => {
-  const reserved = plan.savingsPercentage === null
+  const reserved = plan.savingsIncomePercentage !== null ? plan.incomeSavingsReserved : plan.savingsPercentage === null
     ? plan.savingsAmount ?? 0
     : Math.max(0, plan.balance) * plan.savingsPercentage / 100;
 
