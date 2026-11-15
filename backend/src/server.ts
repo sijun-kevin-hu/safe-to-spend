@@ -1,4 +1,5 @@
 import { requireAuth } from "./middleware/require-auth";
+import { allowCrossOrigin } from "./middleware/cors";
 import { planSchema } from "./schemas/plan";
 import { profileSchema, type Profile } from "./schemas/profile";
 import type { Plan } from "./types/plan";
@@ -7,6 +8,7 @@ import { readIncomeSavings } from "./lib/income-savings";
 import express = require("express");
 
 const app: express.Express = express();
+app.use(allowCrossOrigin);
 app.use(express.json({ limit: "1mb" }));
 const port = Number(process.env.PORT) || 3000;
 
