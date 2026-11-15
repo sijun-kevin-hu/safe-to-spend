@@ -1,3 +1,4 @@
+import { SpendingRoom } from "@/components/home/spending-room";
 import { PurchaseHome } from "@/components/home/purchase-home";
 import { ActivitySheet } from "@/components/home/activity-sheet";
 import { Snackbar } from "@/components/snackbar";
@@ -50,9 +51,6 @@ function BalanceHome({ onPurchases, onUpdated }: {
   const dismissConfirmation = useCallback(() => setConfirmation(null), []);
   const submitted = useRef(false);
   const billsTotal = billItems.reduce((total, bill) => total + bill.amount, 0);
-  const safeToSpend = balanceUpdatedAt && !validationError
-    ? Number(balance) - billsTotal - savingsReserved : null;
-  const overBudget = safeToSpend !== null && safeToSpend < 0;
 
   function submit() {
     if (submitted.current || saveState !== "saved") return;
@@ -70,21 +68,8 @@ function BalanceHome({ onPurchases, onUpdated }: {
     onUpdated?.();
   }
 
-  let resultMessage = "Update your current balance to get started.";
-  if (validationError) resultMessage = "Check your savings setting in Plan to see your spending room.";
-  else if (safeToSpend !== null) resultMessage = overBudget
-    ? "Your listed bills and savings exceed your current balance."
-    : billItems.length > 0 && savingsReserved > 0
-      ? "Your listed bills and savings reserve are excluded."
-      : "Based on what you entered. Add bills and savings in Plan for a fuller picture.";
-
   return <><Screen>
-    <Text accessibilityRole="header" style={ui.title}>Safe to Spend</Text>
-    <View style={[styles.result, overBudget && styles.warning]} accessibilityLiveRegion="polite">
-      <Text style={ui.label}>{overBudget ? "Amount over your balance" : "Safe to spend"}</Text>
-      <Text style={styles.amount}>{safeToSpend === null ? "—" : formatCurrency(Math.abs(safeToSpend))}</Text>
-      <Text style={ui.body}>{resultMessage}</Text>
-    </View>
+    <SpendingRoom />
 
     <View style={ui.card}>
       <Text accessibilityRole="header" style={ui.sectionTitle}>Your balance</Text>
@@ -142,10 +127,7 @@ function formatTimestamp(value: string) {
 }
 
 const styles = StyleSheet.create({
-  result: { padding: 24, borderRadius: 20, backgroundColor: palette.soft, gap: 8 },
-  warning: { backgroundColor: palette.dangerSoft },
-  amount: { color: palette.text, fontSize: 42, fontWeight: "700", fontVariant: ["tabular-nums"], flexShrink: 1 },
-  balance: { ...ui.money, fontSize: 28 },
+  balance: { ...ui.money, fontSize: 24 },
   entry: { gap: 12, borderTopWidth: 1, borderTopColor: palette.border, paddingTop: 20 },
   caption: { color: palette.muted, fontSize: 13, lineHeight: 19 },
 });

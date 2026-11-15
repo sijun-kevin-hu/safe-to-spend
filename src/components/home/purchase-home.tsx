@@ -1,3 +1,4 @@
+import { SpendingRoom } from "@/components/home/spending-room";
 import { SavingsTasks } from "@/components/plan/savings-tasks";
 import { Snackbar } from "@/components/snackbar";
 import { AppButton } from "@/components/app-button";
@@ -22,8 +23,8 @@ export function ActivityContent({ onBalance, compact = false, onSaved }: {
   compact?: boolean;
   onSaved?: (message: string) => void;
 }) {
-  const { balance, balanceUpdatedAt, purchases, addTransaction, savingsReserved,
-    savingsMode, savingsValue, billItems, validationError, saveState, supportsIncome } = usePlan();
+  const { balanceUpdatedAt, purchases, addTransaction,
+    savingsMode, savingsValue, validationError, saveState, supportsIncome } = usePlan();
   const [kind, setKind] = useState<TransactionKind>("purchase");
   const isIncome = kind === "income";
   const entryName = isIncome ? "Income" : "Purchase";
@@ -34,11 +35,13 @@ export function ActivityContent({ onBalance, compact = false, onSaved }: {
   const [pendingConfirmation, setPendingConfirmation] = useState("");
   const saveStarted = useRef(false);
   const submitted = useRef(false);
-  const today = new Date().toDateString();
-  const todayItems = purchases.filter((item) => (item.kind ?? "purchase") === kind &&
-    new Date(item.createdAt).toDateString() === today);
-  const todayTotal = todayItems.reduce((sum, item) => sum + item.amount, 0);
-  const available = Number(balance) - savingsReserved - billItems.reduce((sum, item) => sum + item.amount, 0);
+  const now = new Date();
+  const monthItems = purchases.filter((item) => {
+    if ((item.kind ?? "purchase") !== "purchase") return false;
+    const date = new Date(item.createdAt);
+    return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+  });
+  const monthTotal = monthItems.reduce((sum, item) => sum + item.amount, 0);
 
   useEffect(() => {
     if (!pendingConfirmation) return;
@@ -72,26 +75,16 @@ export function ActivityContent({ onBalance, compact = false, onSaved }: {
   }
 
   return <>
-    {!compact && <View>
-      <Text accessibilityRole="header" style={ui.title}>Log activity</Text>
-      <Text style={ui.body}>Keep your balance up to date as you go.</Text>
-    </View>}
-    {!compact && <View style={styles.summary}>
-      <View style={styles.summaryItem}>
-        <Text style={ui.label}>{isIncome ? "Received today" : "Spent today"}</Text>
-        <Text style={styles.total}>{formatCurrency(todayTotal)}</Text>
-        <Text style={styles.caption}>{todayItems.length} {isIncome
-          ? (todayItems.length === 1 ? "income entry" : "income entries")
-          : (todayItems.length === 1 ? "purchase" : "purchases")}</Text>
+    {!compact && <>
+        <SpendingRoom />
+      <View style={styles.monthSummary}>
+        <View style={styles.monthDescription}>
+          <Text style={styles.monthLabel}>Spent this month</Text>
+          <Text style={styles.caption}>Logged purchases · {now.toLocaleDateString(undefined, { month: "long" })}</Text>
+        </View>
+        <Text style={styles.monthTotal}>{formatCurrency(monthTotal)}</Text>
       </View>
-      <View style={styles.summaryItem}>
-        <Text style={ui.label}>{available < 0 ? "Over your balance" : "Safe to spend"}</Text>
-        <Text style={[styles.total, available < 0 && { color: palette.danger }]}>
-          {balanceUpdatedAt && !validationError ? formatCurrency(Math.abs(available)) : "—"}
-        </Text>
-        <Text style={styles.caption}>After listed bills & savings</Text>
-      </View>
-    </View>}
+    </>}
     {!balanceUpdatedAt ? <View style={ui.card}>
       <Text style={ui.sectionTitle}>Start with your balance</Text>
       <Text style={ui.body}>Set your current balance once. Purchases subtract from it; income adds to it.</Text>
@@ -153,8 +146,9 @@ export function ActivityContent({ onBalance, compact = false, onSaved }: {
 const styles = StyleSheet.create({
   toggle: { flexDirection: "row", gap: 8 },
   toggleOption: { flex: 1 },
-  summary: { backgroundColor: palette.soft, borderRadius: 16, padding: 20, flexDirection: "row", flexWrap: "wrap", gap: 20 },
-  summaryItem: { flexGrow: 1, flexBasis: 120, gap: 4 },
-  total: { ...ui.money, fontSize: 26 },
+  monthSummary: { paddingHorizontal: 4, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12 },
+  monthDescription: { flexGrow: 1, gap: 4 },
+  monthLabel: { color: palette.muted, fontSize: 14, fontWeight: "600" },
+  monthTotal: { ...ui.money, fontSize: 24, flexShrink: 1 },
   caption: { color: palette.muted, fontSize: 13, lineHeight: 19 },
 });
