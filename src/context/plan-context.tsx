@@ -1,3 +1,4 @@
+import { reviseActivity, type ActivityEdit } from "@/lib/activity";
 import { AppButton } from "@/components/app-button";
 import { palette, ui } from "@/constants/design";
 import { Autosave, type SaveState } from "@/lib/autosave";
@@ -30,6 +31,9 @@ import { useAuth } from "./auth-context";
 
 type PlanContextValue = {
   saveState: SaveState;
+  supportsActivityEditing: boolean;
+  previewActivity: (id: string, edit: ActivityEdit | null) => TrackingState;
+  changeActivity: (id: string, edit: ActivityEdit | null) => void;
   supportsSavingsTasks: boolean;
   savingsTasks: SavingsTask[];
   markSavingsSaved: (id: string) => void;
@@ -101,6 +105,7 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
 }>) {
   const [trackingPreference, setTrackingPreference] = useState(initialPlan.trackingPreference);
   const [tracking, setTracking] = useState<TrackingState>({
+    activityRevision: initialPlan.activityRevision ?? 0,
     balance: initialPlan.balance,
     balanceUpdatedAt: initialPlan.balanceUpdatedAt,
     purchases: initialPlan.purchases,
@@ -160,6 +165,7 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
     tracking.incomeSavingsReserved ?? 0,
   );
   const initialInput: PlanInput = {
+    activityRevision: initialPlan.activityRevision ?? 0,
     balance: initialPlan.balance,
     trackingPreference: initialPlan.trackingPreference,
     balanceUpdatedAt: initialPlan.balanceUpdatedAt,
@@ -190,6 +196,7 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
 
   useEffect(() => {
     queue.current?.update(validBalance && !validationError && Number.isFinite(savingsReserved) ? {
+      activityRevision: tracking.activityRevision ?? 0,
       balance: Number(balance),
       trackingPreference,
       balanceUpdatedAt: tracking.balanceUpdatedAt,
@@ -246,8 +253,21 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
     setTracking(next);
   }
 
+  function previewActivity(id: string, edit: ActivityEdit | null) {
+    return reviseActivity(tracking, id, edit);
+  }
+  function changeActivity(id: string, edit: ActivityEdit | null) {
+    if (pendingAction.current || saveState !== "saved" || validationError) throw new Error("Wait for your plan to finish saving.");
+    if (!initialPlan.supportsActivityEditing) throw new Error("Activity editing is not available yet.");
+    const next = previewActivity(id, edit);
+    pendingAction.current = true;
+    setIncomeReserveDraft(null);
+    setTracking(next);
+  }
+
   return (
     <PlanContext.Provider value={{
+      supportsActivityEditing: initialPlan.supportsActivityEditing === true, previewActivity, changeActivity,
       supportsSavingsTasks: initialPlan.supportsSavingsTasks === true, savingsTasks: tasks, markSavingsSaved: completeSavings, reminder,
       savingsMethodMessage, dismissSavingsMethodMessage: () => setSavingsMethodMessage(""),
       saveState, balance, trackingPreference, setTrackingPreference,

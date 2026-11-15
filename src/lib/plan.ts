@@ -14,6 +14,7 @@ export type ActivityEntry = {
 };
 export type Transaction = Omit<ActivityEntry, "kind"> & { kind?: TransactionKind };
 export type TrackingState = {
+  activityRevision?: number;
   balance: number;
   balanceUpdatedAt: string | null;
   // Keep the existing API/JSONB field name for compatibility.
@@ -65,6 +66,7 @@ export function recordPurchase(state: TrackingState, purchase: Omit<Transaction,
 export type SavingsMode = "amount" | "percentage" | "income" | "incomeAmount";
 
 export type PlanInput = {
+  activityRevision?: number;
   balance: number;
   trackingPreference: TrackingPreference | null;
   balanceUpdatedAt: string | null;
@@ -78,6 +80,7 @@ export type PlanInput = {
 };
 
 export type StoredPlan = PlanInput & {
+  supportsActivityEditing?: boolean;
   savingsReserved: number;
   supportsIncome: boolean;
   supportsRecurringBills: boolean;

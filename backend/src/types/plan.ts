@@ -1,6 +1,7 @@
 import type { Bill } from "./bill";
 
 export interface Plan {
+  activityRevision?: number | undefined;
   balance: number;
   trackingPreference: "purchases" | "balance" | null;
   balanceUpdatedAt: string | null;

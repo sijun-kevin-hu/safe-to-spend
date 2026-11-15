@@ -7,7 +7,7 @@ type AppButtonProps = {
   onPress: () => void;
   disabled?: boolean;
   selected?: boolean;
-  variant?: "primary" | "secondary" | "text";
+  variant?: "primary" | "secondary" | "text" | "danger";
 };
 
 export function AppButton({ title, onPress, disabled = false, selected, variant = "primary" }: AppButtonProps) {
@@ -18,7 +18,7 @@ export function AppButton({ title, onPress, disabled = false, selected, variant 
       onBlur={() => setFocused(false)}
       style={({ pressed }) => [styles.button, styles[variant],
       focused && styles.focused, (pressed || disabled) && styles.dimmed]}>
-      <Text style={[styles.label, variant === "primary" && styles.primaryLabel]}>{title}</Text>
+      <Text style={[styles.label, (variant === "primary" || variant === "danger") && styles.primaryLabel]}>{title}</Text>
     </Pressable>
   );
 }
@@ -28,6 +28,7 @@ const styles = StyleSheet.create({
     minHeight: 48, paddingVertical: 14, paddingHorizontal: 20,
     borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "transparent"
   },
+  danger: { backgroundColor: palette.danger },
   primary: { backgroundColor: palette.accent },
   secondary: { backgroundColor: palette.soft, borderColor: palette.border },
   text: { backgroundColor: "transparent" },

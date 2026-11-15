@@ -77,6 +77,9 @@ export async function requestPlan(
     )) {
       throw new Error("The server did not save your savings setting. Please update the API.");
     }
+    const activityRevision = value.activityRevision ?? 0;
+    if (!Number.isSafeInteger(activityRevision) || activityRevision < 0) throw new Error("Invalid activity revision.");
+    if (plan && activityRevision !== (plan.activityRevision ?? 0)) throw new Error("Your activity changes were not saved.");
     const trackingPreference = value.trackingPreference ?? null;
     const balanceUpdatedAt = value.balanceUpdatedAt ?? null;
     const purchases = value.purchases ?? [];
@@ -108,6 +111,8 @@ export async function requestPlan(
       }))
     )) throw new Error("The server did not save your balance or transactions. Please update the API.");
     return {
+      activityRevision,
+      supportsActivityEditing: value.supportsActivityEditing === true,
       balance: value.balance,
       trackingPreference,
       balanceUpdatedAt,

@@ -181,3 +181,11 @@ test('fixed-per-income and completed savings receipts validate without double de
  }
  assert.equal(planSchema.safeParse({...base,savingsIncomePercentage:10,purchases:[]}).success,false);
 });
+
+test('activity revisions accept valid corrections and reject invalid counters', () => {
+  const base={balance:100,savingsAmount:null,savingsPercentage:null,billItems:[]};
+  assert.equal(planSchema.parse({...base,activityRevision:1}).activityRevision,1);
+  for(const activityRevision of [-1,0.5,Infinity,Number.MAX_SAFE_INTEGER+1]) {
+    assert.equal(planSchema.safeParse({...base,activityRevision}).success,false);
+  }
+});

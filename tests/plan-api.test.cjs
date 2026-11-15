@@ -163,3 +163,18 @@ test('fixed-income savings and transfer receipts require exact server confirmati
     await assert.rejects(requestPlan('preview',plan), /did not save your balance or transactions/);
   } finally { global.fetch=originalFetch; }
 });
+
+test('activity corrections require the API to confirm the revision', async () => {
+  const originalFetch = global.fetch;
+  const corrected = {...input,activityRevision:1};
+  let response = {...corrected,savingsReserved:0,supportsActivityEditing:true};
+  global.fetch = async () => ({ok:true,json:async()=>response});
+  try {
+    assert.equal((await requestPlan('preview',corrected)).activityRevision,1);
+    assert.equal((await requestPlan('preview',corrected)).supportsActivityEditing,true);
+    response = {...response,activityRevision:0};
+    await assert.rejects(requestPlan('preview',corrected));
+    response = {...response,activityRevision:-1};
+    await assert.rejects(requestPlan('preview'));
+  } finally {global.fetch=originalFetch;}
+});

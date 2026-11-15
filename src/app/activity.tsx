@@ -1,3 +1,5 @@
+import { ActivityDetail } from "@/components/home/activity-detail";
+import { Snackbar } from "@/components/snackbar";
 import { AppButton } from "@/components/app-button";
 import { SaveStatus } from "@/components/plan/save-status";
 import { Screen } from "@/components/screen";
@@ -20,7 +22,8 @@ const activityColors = {
 export default function ActivityScreen() {
   const { purchases, balance, balanceUpdatedAt, saveState } = usePlan();
   const [visibleCount, setVisibleCount] = useState(20);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<ActivityEntry | null>(null);
+  const [notice, setNotice] = useState("");
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const today = new Date().toDateString();
   const yesterday = new Date();
@@ -39,7 +42,7 @@ export default function ActivityScreen() {
     group.entries.push(entry);
   }
 
-  return <Screen>
+  return <><Screen>
     <View style={styles.header}>
       <View style={styles.titleBlock}>
         <Text style={styles.eyebrow}>THE MONEY TRAIL</Text>
@@ -67,16 +70,14 @@ export default function ActivityScreen() {
           const changeLabel = starting ? formatCurrency(entry.balanceAfter!) : change === 0 ? "No change"
             : `${change > 0 ? "+" : "−"}${formatCurrency(Math.abs(change))}`;
           const time = new Date(entry.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-          const hasDetails = entry.balanceAfter !== undefined && entry.balanceBefore !== undefined;
-          const balanceTrail = hasDetails ? `${entry.balanceBefore === null ? "Start" : formatCurrency(entry.balanceBefore!)} → ${formatCurrency(entry.balanceAfter!)}` : "";
-          const expanded = expandedId === entry.id;
+          const balanceTrail = entry.balanceAfter !== undefined && entry.balanceBefore !== undefined ? `${entry.balanceBefore === null ? "Start" : formatCurrency(entry.balanceBefore!)} → ${formatCurrency(entry.balanceAfter!)}` : "";
           return <View key={entry.id}>
             {index > 0 && <View style={styles.divider} />}
-            <Pressable accessibilityRole="button" aria-expanded={expanded}
-              accessibilityHint={expanded ? "Collapse balance details" : "Show balance details"}
+            <Pressable accessibilityRole="button"
+              accessibilityHint="View, edit or delete this activity"
               accessibilityLabel={`${entry.note || label}, ${entry.note ? `${label}, ` : ""}${changeLabel}, ${time}${balanceTrail ? `, balance ${balanceTrail}` : ""}`}
               onFocus={() => setFocusedId(entry.id)} onBlur={() => setFocusedId(null)}
-              onPress={() => setExpandedId(expanded ? null : entry.id)}
+              onPress={() => setSelected(entry)}
               style={({ pressed }) => [styles.row, pressed && styles.pressed,
                 focusedId === entry.id && styles.focused]}>
               <View style={styles.mainRow}>
@@ -95,26 +96,9 @@ export default function ActivityScreen() {
                     {!!balanceTrail && <Text style={styles.trail}>{balanceTrail}</Text>}
                   </View>
                 </View>
-                <Text accessible={false} style={[styles.chevron, expanded && styles.expandedChevron]}>›</Text>
+                <Text accessible={false} style={styles.chevron}>›</Text>
               </View>
-              {expanded && <View style={styles.details}>
-                <Text style={styles.detailTitle}>{label}</Text>
-                {hasDetails ? <>
-                  <View style={styles.detailLine}>
-                    <Text style={styles.caption}>Balance before</Text>
-                    <Text style={styles.detailAmount}>{entry.balanceBefore === null ? "Not set" : formatCurrency(entry.balanceBefore!)}</Text>
-                  </View>
-                  <View style={styles.detailLine}>
-                    <Text style={styles.caption}>Balance after</Text>
-                    <Text style={styles.detailAmount}>{formatCurrency(entry.balanceAfter!)}</Text>
-                  </View>
-                </> : <Text style={styles.detailNote}>Balance details aren’t available for this older entry.</Text>}
-                {checkIn && !starting && <Text style={styles.detailNote}>You replaced your balance with this check-in.</Text>}
-                {entry.savingsAllocated !== undefined && <View style={styles.detailLine}>
-                  <Text style={styles.caption}>Set aside for savings</Text>
-                  <Text style={styles.detailAmount}>{formatCurrency(entry.savingsAllocated)}</Text>
-                </View>}
-              </View>}
+
             </Pressable>
           </View>;
         })}
@@ -123,7 +107,11 @@ export default function ActivityScreen() {
     {purchases.length > visibleCount && <AppButton title="Show older activity" variant="secondary"
       onPress={() => setVisibleCount((count) => count + 20)} />}
     {saveState !== "saved" && <SaveStatus />}
-  </Screen>;
+  </Screen>
+    {selected && <ActivityDetail key={selected.id} entry={selected} onClose={() => setSelected(null)}
+      onSaved={(message) => { setSelected(null); setNotice(message); }} />}
+    {!!notice && <Snackbar message={notice} onDismiss={() => setNotice("")} />}
+  </>;
 }
 
 const styles = StyleSheet.create({
@@ -155,15 +143,9 @@ const styles = StyleSheet.create({
   caption: { color: palette.muted, fontSize: 12, lineHeight: 18 },
   trail: { color: palette.muted, fontSize: 12, lineHeight: 18, fontVariant: ["tabular-nums"] },
   chevron: { color: palette.muted, fontSize: 20 },
-  expandedChevron: { transform: [{ rotate: "90deg" }] },
   divider: { height: 1, backgroundColor: palette.background, marginLeft: 64, marginRight: 16 },
   pressed: { backgroundColor: palette.soft },
   focused: { borderColor: palette.accent },
-  details: { marginLeft: 48, marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: palette.border, gap: 8 },
-  detailTitle: { color: palette.text, fontSize: 12, fontWeight: "600" },
-  detailLine: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 8 },
-  detailAmount: { ...ui.money, fontSize: 12, lineHeight: 18 },
-  detailNote: { color: palette.muted, fontSize: 12, lineHeight: 18 },
   empty: { alignItems: "center", gap: 14, paddingVertical: 48, paddingHorizontal: 20 },
   emptyTitle: { color: palette.text, fontSize: 22, fontWeight: "700", letterSpacing: -0.5 },
   emptyBody: { ...ui.body, textAlign: "center", maxWidth: 260 },

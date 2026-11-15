@@ -76,7 +76,7 @@ export function ActivityContent({ onBalance, compact = false, onSaved }: {
 
   return <>
     {!compact && <>
-        <SpendingRoom />
+      <SpendingRoom />
       <View style={styles.monthSummary}>
         <View style={styles.monthDescription}>
           <Text style={styles.monthLabel}>Spent this month</Text>

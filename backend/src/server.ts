@@ -10,7 +10,7 @@ const app: express.Express = express();
 app.use(express.json({ limit: "1mb" }));
 const port = Number(process.env.PORT) || 3000;
 
-type PlanResponse = (Plan & { supportsIncome: true; supportsRecurringBills: true; supportsIncomeSavings: boolean; supportsSavingsTasks: boolean }) | { error: string };
+type PlanResponse = (Plan & { supportsIncome: true; supportsRecurringBills: true; supportsIncomeSavings: boolean; supportsSavingsTasks: boolean; supportsActivityEditing: boolean }) | { error: string };
 type AuthResponse = { id: string; email: string | null } | { error: string };
 type ProfileResponse = Profile | null | { error: string };
 
@@ -93,7 +93,7 @@ app.get<{}, PlanResponse>("/plan", requireAuth, async (_req, res) => {
   const [planResult, profileResult, incomeSavings] = await Promise.all([
     userSupabase
       .from("plans")
-      .select("balance, savings_goal, savings_amount, savings_percentage, bill_items, balance_updated_at, purchases")
+      .select("balance, savings_goal, savings_amount, savings_percentage, bill_items, balance_updated_at, purchases, activity_revision")
       .eq("user_id", user.id)
       .maybeSingle(),
     userSupabase
@@ -118,6 +118,8 @@ app.get<{}, PlanResponse>("/plan", requireAuth, async (_req, res) => {
 
   if (planResult.data === null) {
     res.json({
+      activityRevision: 0,
+      supportsActivityEditing: true,
       balance: 0,
       supportsIncome: true,
       supportsRecurringBills: true,
@@ -142,6 +144,7 @@ app.get<{}, PlanResponse>("/plan", requireAuth, async (_req, res) => {
     ? Number(data.savings_goal) || null
     : Number(data.savings_amount);
   const result = planSchema.safeParse({
+    activityRevision: Number(data.activity_revision),
     balance: Number(data.balance),
     trackingPreference,
     balanceUpdatedAt: data.balance_updated_at ? new Date(data.balance_updated_at).toISOString() : null,
@@ -160,7 +163,7 @@ app.get<{}, PlanResponse>("/plan", requireAuth, async (_req, res) => {
     return;
   }
 
-  res.json({ ...result.data, supportsIncome: true, supportsRecurringBills: true, supportsIncomeSavings: incomeSavings.supported, supportsSavingsTasks: incomeSavings.supported });
+  res.json({ ...result.data, supportsIncome: true, supportsRecurringBills: true, supportsIncomeSavings: incomeSavings.supported, supportsSavingsTasks: incomeSavings.supported, supportsActivityEditing: true });
 });
 
 app.put<{}, PlanResponse, unknown>("/plan", requireAuth, async (req, res) => {
@@ -206,6 +209,7 @@ app.put<{}, PlanResponse, unknown>("/plan", requireAuth, async (req, res) => {
   const { error: planError } = await userSupabase.from("plans").upsert(
     {
       user_id: user.id,
+      ...(result.data.activityRevision !== undefined ? { activity_revision: result.data.activityRevision } : {}),
       balance: result.data.balance,
       // Keep the legacy derived column populated during the API rollout.
       savings_goal: result.data.savingsReserved,
@@ -229,7 +233,7 @@ app.put<{}, PlanResponse, unknown>("/plan", requireAuth, async (req, res) => {
 
   if (planError) {
     console.error("Unable to save plan to Supabase:", planError);
-    res.status(500).json({ error: "Unable to save plan." });
+    res.status(["40001", "PT409"].includes(planError.code) ? 409 : 500).json({ error: ["40001", "PT409"].includes(planError.code) ? "Activity changed elsewhere. Reopen the app before editing." : "Unable to save plan." });
     return;
   }
 
@@ -249,7 +253,7 @@ app.put<{}, PlanResponse, unknown>("/plan", requireAuth, async (req, res) => {
     }
   }
 
-  res.json({ ...savedPlan, supportsIncome: true, supportsRecurringBills: true, supportsIncomeSavings: incomeSavings.supported, supportsSavingsTasks: incomeSavings.supported });
+  res.json({ ...savedPlan, supportsIncome: true, supportsRecurringBills: true, supportsIncomeSavings: incomeSavings.supported, supportsSavingsTasks: incomeSavings.supported, supportsActivityEditing: true });
 });
 
 app.listen(port, () => {
