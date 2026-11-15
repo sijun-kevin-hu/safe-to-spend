@@ -7,8 +7,8 @@ import { useState, type PropsWithChildren } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 const choices = [
-  { value: "balance", title: "Update my balance", description: "Enter your current balance to refresh what’s safe to spend. No need to log purchases or income." },
-  { value: "purchases", title: "Log purchases & income", description: "Log spending and money received as you go to keep your balance up to date." },
+  { value: "purchases", title: "Log purchases & income", description: "Log money in and out. See what’s safe to spend as you go." },
+  { value: "balance", title: "Update my balance", description: "Prefer fewer entries? Check in with your current balance instead." },
 ] as const;
 
 export function TrackingPreferencePicker({ value, onChange }: {
@@ -19,8 +19,8 @@ export function TrackingPreferencePicker({ value, onChange }: {
     {choices.map((choice) => <View key={choice.value} style={[
       styles.choice, value === choice.value && styles.selected,
     ]}>
-      {choice.value === "balance" && <View style={styles.badge}>
-        <Text style={styles.badgeText}>Recommended · Less effort</Text>
+      {choice.value === "purchases" && <View style={styles.badge}>
+        <Text style={styles.badgeText}>Recommended</Text>
       </View>}
       <AppButton title={`${value === choice.value ? "✓ " : ""}${choice.title}`}
         selected={value === choice.value}
@@ -33,13 +33,13 @@ export function TrackingPreferencePicker({ value, onChange }: {
 
 export function TrackingOnboarding({ children }: PropsWithChildren) {
   const { trackingPreference, setTrackingPreference } = usePlan();
-  const [choice, setChoice] = useState<TrackingPreference>("balance");
+  const [choice, setChoice] = useState<TrackingPreference>("purchases");
   if (trackingPreference) return children;
   return <Screen>
     <Text style={ui.label}>Welcome to Safe to Spend</Text>
-    <Text accessibilityRole="header" style={ui.title}>How would you like to keep your balance up to date?</Text>
+    <Text accessibilityRole="header" style={ui.title}>Keep up with money in and out</Text>
     <TrackingPreferencePicker value={choice} onChange={setChoice} />
-    <Text style={ui.body}>You can use both options and change your preference in Plan anytime.</Text>
+    <Text style={ui.body}>Choose your Home view. You can change it in Plan anytime.</Text>
     <AppButton title="Continue" disabled={!choice} onPress={() => {
       if (choice) setTrackingPreference(choice);
     }} />

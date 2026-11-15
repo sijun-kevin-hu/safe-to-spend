@@ -17,7 +17,7 @@ type Action = "purchases" | "balance";
 
 export default function HomeScreen() {
   const { trackingPreference } = usePlan();
-  return <HomeMode key={trackingPreference} preference={trackingPreference ?? "balance"} />;
+  return <HomeMode key={trackingPreference} preference={trackingPreference ?? "purchases"} />;
 }
 
 function HomeMode({ preference }: { preference: Action }) {

@@ -104,6 +104,8 @@ safe to spend = current balance - upcoming bills - savings goal
 
 ## Current Progress
 
+- Log purchases & income is the recommended, preselected onboarding option and fallback Home view. Balance check-ins remain available as an alternative; existing saved preferences are respected.
+
 - Simplified Savings to a method picker, one input, a live “For every $100” income example, and a Set aside summary. Income reserve editing lives under Adjust. Untouched plans with supported APIs default to From income at 10%; existing savings settings and existing balance/history plans are preserved. Fixed amount behavior is unchanged; Mark as saved was skipped at the user’s request. Frontend TypeScript, all 32 frontend tests, web export, and synthetic browser checks passed for defaults, preservation, allocations, adjustments, reload, validation, unsupported APIs, and 320px layout. No backend or database changes are required.
 
 - Income-based savings is implemented as a third strategy, From income. Each income entry adds its rounded percentage to a persistent virtual reserve and records the allocation in Activity details. Rate changes affect future entries; Already reserved adjusts savings still included in the balance. Switching strategies preserves the existing reserve. The additive migration `supabase/migrations/20261115164407_income_based_savings.sql` is applied in production, preserving all six existing plans. All 47 frontend/backend tests, TypeScript, backend build, web export, synthetic browser checks, and live authenticated two-account API/RLS checks pass. Physical-device checks remain pending.
