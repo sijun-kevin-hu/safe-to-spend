@@ -1,3 +1,4 @@
+import { importHistory } from "@/lib/activity-csv";
 import { reviseActivity, type ActivityEdit } from "@/lib/activity";
 import { AppButton } from "@/components/app-button";
 import { palette, ui } from "@/constants/design";
@@ -31,6 +32,8 @@ import { useAuth } from "./auth-context";
 
 type PlanContextValue = {
   saveState: SaveState;
+  supportsCsvImport: boolean;
+  importActivity: (entries: TrackingState["purchases"]) => void;
   supportsActivityEditing: boolean;
   previewActivity: (id: string, edit: ActivityEdit | null) => TrackingState;
   changeActivity: (id: string, edit: ActivityEdit | null) => void;
@@ -265,8 +268,18 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
     setTracking(next);
   }
 
+  function importActivity(entries: TrackingState["purchases"]) {
+    if (pendingAction.current || saveState !== "saved" || validationError) throw new Error("Wait for your plan to finish saving.");
+    if (!initialPlan.supportsCsvImport) throw new Error("CSV importing is not available on this server yet.");
+    const next = importHistory(tracking, entries);
+    if (next === tracking) throw new Error("These transactions have already been imported.");
+    pendingAction.current = true;
+    setTracking(next);
+  }
+
   return (
     <PlanContext.Provider value={{
+      supportsCsvImport: initialPlan.supportsCsvImport === true, importActivity,
       supportsActivityEditing: initialPlan.supportsActivityEditing === true, previewActivity, changeActivity,
       supportsSavingsTasks: initialPlan.supportsSavingsTasks === true, savingsTasks: tasks, markSavingsSaved: completeSavings, reminder,
       savingsMethodMessage, dismissSavingsMethodMessage: () => setSavingsMethodMessage(""),

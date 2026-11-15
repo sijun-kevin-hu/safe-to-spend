@@ -66,10 +66,10 @@ export function ActivityDetail({ entry, onClose, onSaved }: {
         <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
           contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, 20) }]}>
           <Text style={ui.body}>{new Date(entry.createdAt).toLocaleString(undefined, {
-            month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit",
+            month: "long", day: "numeric", year: "numeric", ...(entry.historyOnly ? {} : { hour: "numeric" as const, minute: "2-digit" as const }),
           })}</Text>
           {deleting ? <>
-            <Text style={ui.body}>This removes the record and corrects the affected balances. This can’t be undone.</Text>
+            <Text style={ui.body}>{entry.historyOnly ? "This removes the imported record. Your current balance and savings stay unchanged. This can’t be undone." : "This removes the record and corrects the affected balances. This can’t be undone."}</Text>
             {income && entry.savingsSavedAt && <Text style={ui.body}>The linked savings record will also be removed.</Text>}
             {transfer && <Text style={ui.body}>This undoes the recorded move to savings. No money is moved between accounts.</Text>}
           </> : <>
@@ -91,6 +91,7 @@ export function ActivityDetail({ entry, onClose, onSaved }: {
             </View>}
             {transfer && <Text style={ui.body}>Corrects the recorded savings amount and its linked income. No money is moved between accounts.</Text>}
           </>}
+          {entry.historyOnly && !deleting && <Text style={ui.body}>Imported history. Editing this record updates your activity and monthly totals; your current balance and savings stay unchanged.</Text>}
           {!deleting && entry.balanceAfter !== undefined && <Text style={styles.caption}>
             Recorded balance: {entry.balanceBefore == null ? "Not set" : formatCurrency(entry.balanceBefore)} → {formatCurrency(entry.balanceAfter)}
           </Text>}

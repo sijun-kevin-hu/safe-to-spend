@@ -17,7 +17,9 @@ const planInputSchema = z.object({
     savingsSavedAt: z.iso.datetime().optional(),
     savingsSourceId: z.string().min(1).max(100).optional(),
     savingsAllocated: z.number().nonnegative().optional(),
+    historyOnly: z.boolean().optional(),
   }).refine((item) => {
+    if (item.historyOnly && (!(item.kind === "purchase" || item.kind === "income") || item.balanceBefore !== undefined || item.balanceAfter !== undefined || item.savingsAllocated !== undefined || item.savingsSavedAt !== undefined)) return false;
     if (item.savingsAllocated !== undefined && (item.kind !== "income" || item.savingsAllocated > item.amount)) return false;
     if (item.savingsSavedAt !== undefined && (item.kind !== "income" || !(item.savingsAllocated! > 0))) return false;
     if ((item.kind === "savings_transfer") !== (item.savingsSourceId !== undefined)) return false;

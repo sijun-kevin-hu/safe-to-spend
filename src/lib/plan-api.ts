@@ -91,6 +91,7 @@ export async function requestPlan(
         (item.kind === "balance_check_in" || item.amount >= 0.01) &&
         (item.kind === undefined || ["purchase", "income", "balance_check_in", "savings_transfer"].includes(item.kind)) &&
         validBalanceDetails(item) &&
+        (item.historyOnly === undefined || (typeof item.historyOnly === "boolean" && (!item.historyOnly || ((item.kind === "purchase" || item.kind === "income") && item.balanceBefore === undefined && item.balanceAfter === undefined && item.savingsAllocated === undefined && item.savingsSavedAt === undefined)))) &&
         (item.savingsSavedAt === undefined || (item.kind === "income" && typeof item.savingsSavedAt === "string" && Number.isFinite(Date.parse(item.savingsSavedAt)))) &&
         (item.kind !== "savings_transfer" || typeof item.savingsSourceId === "string") &&
         (item.savingsAllocated === undefined || (item.kind === "income" && Number.isFinite(item.savingsAllocated) && item.savingsAllocated >= 0 && item.savingsAllocated <= item.amount)) &&
@@ -105,7 +106,7 @@ export async function requestPlan(
       value.balance !== plan.balance ||
       (purchases.length !== plan.purchases.length || purchases.some((item: ActivityEntry, index: number) => {
         const sent = plan.purchases[index];
-        return item.id !== sent.id || item.amount !== sent.amount || item.createdAt !== sent.createdAt ||
+        return item.historyOnly !== sent.historyOnly || item.id !== sent.id || item.amount !== sent.amount || item.createdAt !== sent.createdAt ||
           (item.note ?? "") !== (sent.note ?? "") || (item.kind ?? "purchase") !== (sent.kind ?? "purchase") ||
           item.balanceBefore !== sent.balanceBefore || item.balanceAfter !== sent.balanceAfter || item.savingsAllocated !== sent.savingsAllocated || item.savingsSavedAt !== sent.savingsSavedAt || item.savingsSourceId !== sent.savingsSourceId;
       }))
@@ -113,6 +114,7 @@ export async function requestPlan(
     return {
       activityRevision,
       supportsActivityEditing: value.supportsActivityEditing === true,
+      supportsCsvImport: value.supportsCsvImport === true,
       balance: value.balance,
       trackingPreference,
       balanceUpdatedAt,

@@ -49,14 +49,16 @@ export function reviseActivity(state: TrackingState, id: string, edit: ActivityE
     }
   }
 
+  const ledger = state.purchases.filter(entry => !entry.historyOnly);
   let baseline = state.balance;
-  for (const entry of state.purchases) {
+  for (const entry of ledger) {
     if (entry.balanceBefore !== undefined) baseline = entry.balanceBefore ?? 0;
     else baseline = cents(baseline - change(entry));
   }
   let balance = baseline;
-  let known = state.purchases.at(-1)?.balanceBefore !== null;
+  let known = ledger.at(-1)?.balanceBefore !== null;
   for (const entry of [...entries].reverse()) {
+    if (entry.historyOnly) continue;
     const before = balance;
     if (entry.kind === "balance_check_in") {
       balance = entry.balanceAfter!;

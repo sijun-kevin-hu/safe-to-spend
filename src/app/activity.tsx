@@ -1,3 +1,6 @@
+import { CsvImport } from "@/components/home/csv-import";
+import { ActivityFilters } from "@/components/home/activity-filters";
+import { filterActivity, type DatePreset } from "@/lib/activity-dates";
 import { ActivityDetail } from "@/components/home/activity-detail";
 import { Snackbar } from "@/components/snackbar";
 import { AppButton } from "@/components/app-button";
@@ -21,6 +24,11 @@ const activityColors = {
 
 export default function ActivityScreen() {
   const { purchases, balance, balanceUpdatedAt, saveState } = usePlan();
+  const [importOpen, setImportOpen] = useState(false);
+  const [preset, setPreset] = useState<DatePreset>("all");
+  const [start, setStart] = useState<Date | null>(null);
+  const [end, setEnd] = useState<Date | null>(null);
+  const filtered = filterActivity(purchases, preset, start, end);
   const [visibleCount, setVisibleCount] = useState(20);
   const [selected, setSelected] = useState<ActivityEntry | null>(null);
   const [notice, setNotice] = useState("");
@@ -29,7 +37,7 @@ export default function ActivityScreen() {
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
   const groups: { day: string; label: string; entries: ActivityEntry[] }[] = [];
-  for (const entry of purchases.slice(0, visibleCount)) {
+  for (const entry of filtered.slice(0, visibleCount)) {
     const date = new Date(entry.createdAt);
     const day = date.toDateString();
     let group = groups[groups.length - 1];
@@ -53,10 +61,14 @@ export default function ActivityScreen() {
         <Text style={styles.balance}>{balanceUpdatedAt ? formatCurrency(Number(balance)) : "—"}</Text>
       </View>
     </View>
+    <AppButton title="Import CSV" variant="secondary" onPress={() => setImportOpen(true)} />
+    <ActivityFilters preset={preset} onPreset={value => { setPreset(value); setVisibleCount(20); }}
+      start={start} end={end} onStart={value => { setStart(value); setVisibleCount(20); }}
+      onEnd={value => { setEnd(value); setVisibleCount(20); }} count={filtered.length} />
     {groups.length === 0 ? <View style={styles.empty}>
       <View style={[styles.icon, styles.checkInIcon]}><Text style={styles.checkInSymbol}>↻</Text></View>
-      <Text style={styles.emptyTitle}>A fresh start.</Text>
-      <Text style={styles.emptyBody}>Check in with your balance or log a purchase on Home. Your money trail starts here.</Text>
+      <Text style={styles.emptyTitle}>{purchases.length ? "No activity in this range." : "A fresh start."}</Text>
+      <Text style={styles.emptyBody}>{purchases.length ? "Try another date range or choose All time." : "Check in with your balance, log a purchase, or import a CSV to start your history."}</Text>
     </View> : groups.map((group, groupIndex) => <View key={`${group.day}-${groupIndex}`} style={styles.group}>
       <Text accessibilityRole="header" style={styles.day}>{group.label}</Text>
       <View style={styles.ledger}>
@@ -69,7 +81,7 @@ export default function ActivityScreen() {
           const change = checkIn || income ? entry.amount : -entry.amount;
           const changeLabel = starting ? formatCurrency(entry.balanceAfter!) : change === 0 ? "No change"
             : `${change > 0 ? "+" : "−"}${formatCurrency(Math.abs(change))}`;
-          const time = new Date(entry.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+          const time = entry.historyOnly ? "Imported CSV" : new Date(entry.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
           const balanceTrail = entry.balanceAfter !== undefined && entry.balanceBefore !== undefined ? `${entry.balanceBefore === null ? "Start" : formatCurrency(entry.balanceBefore!)} → ${formatCurrency(entry.balanceAfter!)}` : "";
           return <View key={entry.id}>
             {index > 0 && <View style={styles.divider} />}
@@ -104,10 +116,11 @@ export default function ActivityScreen() {
         })}
       </View>
     </View>)}
-    {purchases.length > visibleCount && <AppButton title="Show older activity" variant="secondary"
+    {filtered.length > visibleCount && <AppButton title="Show older activity" variant="secondary"
       onPress={() => setVisibleCount((count) => count + 20)} />}
     {saveState !== "saved" && <SaveStatus />}
   </Screen>
+    {importOpen && <CsvImport onClose={() => setImportOpen(false)} onSaved={message => { setImportOpen(false); setPreset("all"); setVisibleCount(20); setNotice(message); }} />}
     {selected && <ActivityDetail key={selected.id} entry={selected} onClose={() => setSelected(null)}
       onSaved={(message) => { setSelected(null); setNotice(message); }} />}
     {!!notice && <Snackbar message={notice} onDismiss={() => setNotice("")} />}

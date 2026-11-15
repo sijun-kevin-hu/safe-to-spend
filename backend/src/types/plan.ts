@@ -10,6 +10,7 @@ export interface Plan {
     kind?: "purchase" | "income" | "balance_check_in" | "savings_transfer" | undefined;
     balanceBefore?: number | null | undefined; balanceAfter?: number | undefined;
     savingsSavedAt?: string | undefined; savingsSourceId?: string | undefined;
+    historyOnly?: boolean | undefined;
     savingsAllocated?: number | undefined }[];
   savingsAmount: number | null;
   savingsPercentage: number | null;

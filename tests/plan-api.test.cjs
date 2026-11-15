@@ -178,3 +178,15 @@ test('activity corrections require the API to confirm the revision', async () =>
     await assert.rejects(requestPlan('preview'));
   } finally {global.fetch=originalFetch;}
 });
+
+test('CSV imports require the server to preserve history-only semantics', async () => {
+  const originalFetch=global.fetch;
+  const sent={...input,purchases:[{id:'csv-test',kind:'purchase',amount:5,createdAt:'2026-11-01T12:00:00.000Z',historyOnly:true}]};
+  let response={...sent,savingsReserved:0,supportsCsvImport:true};
+  global.fetch=async()=>({ok:true,json:async()=>response});
+  try {
+    assert.equal((await requestPlan('preview',sent)).supportsCsvImport,true);
+    response={...response,purchases:[{...sent.purchases[0],historyOnly:undefined}]};
+    await assert.rejects(requestPlan('preview',sent));
+  }finally{global.fetch=originalFetch;}
+});

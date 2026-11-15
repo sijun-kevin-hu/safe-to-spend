@@ -189,3 +189,11 @@ test('activity revisions accept valid corrections and reject invalid counters', 
     assert.equal(planSchema.safeParse({...base,activityRevision}).success,false);
   }
 });
+
+test('CSV history metadata survives persistence and cannot masquerade as balance-changing activity', () => {
+  const entry={id:'csv-test',kind:'purchase',amount:5,createdAt:'2026-11-01T12:00:00.000Z',note:'Coffee',historyOnly:true};
+  assert.equal(planSchema.parse({...base,purchases:[entry]}).purchases[0].historyOnly,true);
+  for(const extra of [{kind:'balance_check_in',amount:0,balanceBefore:null,balanceAfter:100},{balanceBefore:100,balanceAfter:95},{kind:'income',savingsAllocated:1}]) {
+    assert.equal(planSchema.safeParse({...base,purchases:[{...entry,...extra}]}).success,false);
+  }
+});

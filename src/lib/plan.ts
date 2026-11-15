@@ -11,6 +11,7 @@ export type ActivityEntry = {
   savingsAllocated?: number;
   savingsSavedAt?: string;
   savingsSourceId?: string;
+  historyOnly?: boolean;
 };
 export type Transaction = Omit<ActivityEntry, "kind"> & { kind?: TransactionKind };
 export type TrackingState = {
@@ -81,6 +82,7 @@ export type PlanInput = {
 
 export type StoredPlan = PlanInput & {
   supportsActivityEditing?: boolean;
+  supportsCsvImport?: boolean;
   savingsReserved: number;
   supportsIncome: boolean;
   supportsRecurringBills: boolean;
