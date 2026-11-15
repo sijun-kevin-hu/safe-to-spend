@@ -53,3 +53,16 @@ test('legacy savings stay unchanged and the income method is explicit',()=>{
  for(const value of ['', '-1', '101', 'NaN'])assert.ok(savingsError('income',value));
  assert.equal(savingsError('income','0'),'');
 });
+
+
+test('new plans default to income savings without changing existing or unsupported plans',()=>{
+ const fresh={balance:0,balanceUpdatedAt:null,purchases:[],savingsAmount:null,savingsPercentage:null,savingsIncomePercentage:null,supportsIncomeSavings:true};
+ assert.deepEqual(output.initialSavingsChoice(fresh),{mode:'income',value:'10'});
+ assert.deepEqual(output.initialSavingsChoice({...fresh,savingsAmount:0}),{mode:'amount',value:'0'});
+ assert.deepEqual(output.initialSavingsChoice({...fresh,savingsAmount:150}),{mode:'amount',value:'150'});
+ assert.deepEqual(output.initialSavingsChoice({...fresh,savingsPercentage:20}),{mode:'percentage',value:'20'});
+ assert.deepEqual(output.initialSavingsChoice({...fresh,savingsIncomePercentage:0}),{mode:'income',value:'0'});
+ for(const existing of [{supportsIncomeSavings:false},{balanceUpdatedAt:time},{balance:100},{purchases:[income]}]) {
+  assert.deepEqual(output.initialSavingsChoice({...fresh,...existing}),{mode:'amount',value:''});
+ }
+});

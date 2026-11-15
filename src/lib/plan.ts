@@ -80,6 +80,17 @@ export type StoredPlan = PlanInput & {
   supportsIncomeSavings: boolean;
 };
 
+// Default only an untouched plan; never change an existing savings choice.
+export function initialSavingsChoice(plan: StoredPlan): { mode: SavingsMode; value: string } {
+  if (plan.savingsIncomePercentage != null) return { mode: "income", value: String(plan.savingsIncomePercentage) };
+  if (plan.savingsPercentage != null) return { mode: "percentage", value: String(plan.savingsPercentage) };
+  if (plan.savingsAmount != null) return { mode: "amount", value: String(plan.savingsAmount) };
+  if (plan.supportsIncomeSavings && plan.balanceUpdatedAt === null && plan.purchases.length === 0 && plan.balance === 0) {
+    return { mode: "income", value: "10" };
+  }
+  return { mode: "amount", value: "" };
+}
+
 export function calculateSavingsReserved(
   balance: number,
   savingsAmount: number | null,

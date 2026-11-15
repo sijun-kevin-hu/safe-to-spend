@@ -3,6 +3,7 @@ import { palette, ui } from "@/constants/design";
 import { Autosave, type SaveState } from "@/lib/autosave";
 import {
   calculateSavingsReserved,
+  initialSavingsChoice,
   recordTransaction,
   type TransactionKind,
   updateTrackingBalance,
@@ -114,12 +115,9 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
     setTracking((current) => recordTransaction(current, transaction,
       savingsMode === "income" ? Number(savingsValue) : null));
   }
-  const [savingsMode, setSavingsMode] = useState<SavingsMode>(
-    initialPlan.savingsIncomePercentage != null ? "income" : initialPlan.savingsPercentage === null ? "amount" : "percentage",
-  );
-  const [savingsValue, setSavingsValue] = useState(String(
-    initialPlan.savingsIncomePercentage ?? initialPlan.savingsPercentage ?? initialPlan.savingsAmount ?? "",
-  ));
+  const initialSavings = initialSavingsChoice(initialPlan);
+  const [savingsMode, setSavingsMode] = useState<SavingsMode>(initialSavings.mode);
+  const [savingsValue, setSavingsValue] = useState(initialSavings.value);
   const [incomeReserveDraft, setIncomeReserveDraft] = useState<string | null>(null);
   const incomeReserveValue = incomeReserveDraft ?? String(tracking.incomeSavingsReserved ?? 0);
   function setIncomeReserveValue(value: string) {

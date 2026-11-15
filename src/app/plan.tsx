@@ -41,9 +41,9 @@ export default function PlanScreen() {
         <Text accessibilityRole="header" style={ui.title}>Your plan</Text>
         <Text style={ui.body}>Set aside money for savings and upcoming bills.</Text>
         <PlanCard
-          title="Savings reserve"
+          title="Savings"
           amount={Number.isFinite(savingsReserved) ? formatCurrency(savingsReserved) : "—"}
-          description={savingsMode === "income" ? `${savingsValue || "0"}% of logged income` : savingsMode === "percentage" ? `${savingsValue || "0"}% of current balance` : "Fixed amount · Excluded from safe-to-spend"}
+          description={savingsMode === "income" ? `${savingsValue || "0"}% of logged income` : savingsMode === "percentage" ? `${savingsValue || "0"}% of current balance` : "Fixed amount · Set aside"}
           onPress={() => openSection("savings")}
         />
         <PlanCard
