@@ -79,6 +79,8 @@ test('fixed income allocation is capped, rounded and creates one card per receip
  assert.throws(()=>recordTransaction(initial,income,null,-1));
 });
 test('mark saved transfers money once, preserves safe to spend and survives reload',()=>{
+ assert.ok(savingsError('incomeAmount',''));
+ assert.equal(savingsError('incomeAmount','0'),'');
  const received=recordTransaction({...initial,incomeSavingsReserved:0},income,10);
  const room=received.balance-received.incomeSavingsReserved;
  const moved=output.markSavingsSaved(received,'pay',time);

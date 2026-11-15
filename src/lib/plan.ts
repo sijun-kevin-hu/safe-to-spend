@@ -123,6 +123,7 @@ export function savingsSetting(mode: SavingsMode, value: string): {
 
 export function savingsError(mode: SavingsMode, value: string) {
   const amount = Number(value);
+  if (mode === "incomeAmount" && !value.trim()) return "Enter an amount per income.";
   if (mode !== "amount" && mode !== "incomeAmount" && (!value.trim() || !Number.isFinite(amount) || amount < 0 || amount > 100)) {
     return "Enter a percentage from 0 to 100.";
   }
