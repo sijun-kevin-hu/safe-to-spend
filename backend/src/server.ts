@@ -10,7 +10,7 @@ const app: express.Express = express();
 app.use(express.json({ limit: "1mb" }));
 const port = Number(process.env.PORT) || 3000;
 
-type PlanResponse = (Plan & { supportsIncome: true; supportsRecurringBills: true; supportsIncomeSavings: boolean }) | { error: string };
+type PlanResponse = (Plan & { supportsIncome: true; supportsRecurringBills: true; supportsIncomeSavings: boolean; supportsSavingsTasks: boolean }) | { error: string };
 type AuthResponse = { id: string; email: string | null } | { error: string };
 type ProfileResponse = Profile | null | { error: string };
 
@@ -122,12 +122,14 @@ app.get<{}, PlanResponse>("/plan", requireAuth, async (_req, res) => {
       supportsIncome: true,
       supportsRecurringBills: true,
       supportsIncomeSavings: incomeSavings.supported,
+      supportsSavingsTasks: incomeSavings.supported,
       trackingPreference,
       balanceUpdatedAt: null,
       purchases: [],
       savingsAmount: null,
       savingsPercentage: null,
       savingsIncomePercentage: null,
+      savingsIncomeAmount: null,
       incomeSavingsReserved: 0,
       savingsReserved: 0,
       billItems: [],
@@ -144,9 +146,10 @@ app.get<{}, PlanResponse>("/plan", requireAuth, async (_req, res) => {
     trackingPreference,
     balanceUpdatedAt: data.balance_updated_at ? new Date(data.balance_updated_at).toISOString() : null,
     purchases: data.purchases,
-    savingsAmount: incomeSavings.percentage !== null ? null : data.savings_percentage === null ? storedAmount : null,
+    savingsAmount: (incomeSavings.percentage !== null || incomeSavings.amount !== null) ? null : data.savings_percentage === null ? storedAmount : null,
     savingsPercentage: data.savings_percentage === null ? null : Number(data.savings_percentage),
     savingsIncomePercentage: incomeSavings.percentage,
+    savingsIncomeAmount: incomeSavings.amount,
     incomeSavingsReserved: incomeSavings.reserved,
     billItems: data.bill_items,
   });
@@ -157,13 +160,17 @@ app.get<{}, PlanResponse>("/plan", requireAuth, async (_req, res) => {
     return;
   }
 
-  res.json({ ...result.data, supportsIncome: true, supportsRecurringBills: true, supportsIncomeSavings: incomeSavings.supported });
+  res.json({ ...result.data, supportsIncome: true, supportsRecurringBills: true, supportsIncomeSavings: incomeSavings.supported, supportsSavingsTasks: incomeSavings.supported });
 });
 
 app.put<{}, PlanResponse, unknown>("/plan", requireAuth, async (req, res) => {
   if (req.body && typeof req.body === "object" &&
     (("savingsIncomePercentage" in req.body) !== ("incomeSavingsReserved" in req.body))) {
     res.status(400).json({ error: "Include both income-savings fields." }); return;
+  }
+  if (req.body && typeof req.body === "object" && "savingsIncomeAmount" in req.body &&
+    (!("savingsIncomePercentage" in req.body) || !("incomeSavingsReserved" in req.body))) {
+    res.status(400).json({ error: "Include the income savings setting and reserve together." }); return;
   }
   const result = planSchema.safeParse(req.body);
   if (!result.success) {
@@ -177,12 +184,15 @@ app.put<{}, PlanResponse, unknown>("/plan", requireAuth, async (req, res) => {
   if (incomeSavings.error) {
     res.status(500).json({ error: "Unable to verify savings settings." }); return;
   }
+  if (incomeSavings.amount !== null && !(req.body && typeof req.body === "object" && "savingsIncomeAmount" in req.body)) {
+    res.status(409).json({ error: "Update the app to preserve your savings method." }); return;
+  }
   const includesIncomeSavings = Boolean(req.body && typeof req.body === "object" &&
     "savingsIncomePercentage" in req.body && "incomeSavingsReserved" in req.body);
-  if (!incomeSavings.supported && (result.data.savingsIncomePercentage !== null || result.data.incomeSavingsReserved !== 0)) {
+  if (!incomeSavings.supported && (result.data.savingsIncomePercentage !== null || result.data.savingsIncomeAmount !== null || result.data.incomeSavingsReserved !== 0)) {
     res.status(503).json({ error: "Income-based savings is not available yet." }); return;
   }
-  if (!includesIncomeSavings && incomeSavings.percentage !== null) {
+  if (!includesIncomeSavings && (incomeSavings.percentage !== null || incomeSavings.amount !== null)) {
     res.status(409).json({ error: "Update the app to preserve your income-based savings." }); return;
   }
   const savedPlan = { ...result.data,
@@ -202,6 +212,7 @@ app.put<{}, PlanResponse, unknown>("/plan", requireAuth, async (req, res) => {
       savings_amount: result.data.savingsAmount,
       savings_percentage: result.data.savingsPercentage,
       ...(incomeSavings.supported && includesIncomeSavings ? {
+        savings_income_amount: savedPlan.savingsIncomeAmount,
         savings_income_percentage: savedPlan.savingsIncomePercentage,
         income_savings_reserved: savedPlan.incomeSavingsReserved,
       } : {}),
@@ -238,7 +249,7 @@ app.put<{}, PlanResponse, unknown>("/plan", requireAuth, async (req, res) => {
     }
   }
 
-  res.json({ ...savedPlan, supportsIncome: true, supportsRecurringBills: true, supportsIncomeSavings: incomeSavings.supported });
+  res.json({ ...savedPlan, supportsIncome: true, supportsRecurringBills: true, supportsIncomeSavings: incomeSavings.supported, supportsSavingsTasks: incomeSavings.supported });
 });
 
 app.listen(port, () => {

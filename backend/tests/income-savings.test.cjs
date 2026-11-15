@@ -1,7 +1,7 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const {readIncomeSavings}=require('../dist/lib/income-savings');
-const mock=(data,error=null)=>({from(table){assert.equal(table,'plans');return {select(fields){assert.equal(fields,'savings_income_percentage, income_savings_reserved');return {eq(field,user){assert.equal(field,'user_id');assert.equal(user,'user');return {maybeSingle:async()=>({data,error})}}}}}}});
+const mock=(data,error=null)=>({from(table){assert.equal(table,'plans');return {select(fields){assert.equal(fields,'savings_income_percentage, income_savings_reserved, savings_income_amount');return {eq(field,user){assert.equal(field,'user_id');assert.equal(user,'user');return {maybeSingle:async()=>({data,error})}}}}}}});
 test('missing migration disables only the new feature, not legacy plan access',async()=>{
  const result=await readIncomeSavings(mock(null,{code:'42703',message:'column plans.savings_income_percentage does not exist'}),'user');
  assert.equal(result.supported,false);assert.equal(result.error,null);assert.equal(result.reserved,0);

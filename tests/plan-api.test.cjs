@@ -145,3 +145,21 @@ test('income savings and per-entry allocations survive reload and require exact 
     await assert.rejects(requestPlan('preview'), /invalid tracking data/);
   } finally { global.fetch = originalFetch; }
 });
+
+test('fixed-income savings and transfer receipts require exact server confirmation', async () => {
+  const originalFetch = global.fetch;
+  const income = { id:'pay', kind:'income', amount:500, createdAt:input.balanceUpdatedAt, balanceBefore:1000, balanceAfter:1500, savingsAllocated:50, savingsSavedAt:input.balanceUpdatedAt };
+  const transfer = { id:'saved-pay', kind:'savings_transfer', amount:50, createdAt:input.balanceUpdatedAt, balanceBefore:1500, balanceAfter:1450, savingsSourceId:'pay' };
+  const plan = { ...input, balance:1450, savingsIncomeAmount:50, incomeSavingsReserved:0, purchases:[transfer,income] };
+  let response = { ...plan, savingsReserved:0, supportsSavingsTasks:true };
+  global.fetch = async () => ({ ok:true, json:async()=>response });
+  try {
+    assert.equal((await requestPlan('preview',plan)).supportsSavingsTasks,true);
+    response = { ...response, savingsIncomeAmount:null };
+    await assert.rejects(requestPlan('preview',plan), /did not save your savings/);
+    response = { ...response, savingsIncomeAmount:50, purchases:[transfer,{...income,savingsSavedAt:undefined}] };
+    await assert.rejects(requestPlan('preview',plan), /did not save your balance or transactions/);
+    response = { ...response, purchases:[{...transfer,savingsSourceId:'wrong'},income] };
+    await assert.rejects(requestPlan('preview',plan), /did not save your balance or transactions/);
+  } finally { global.fetch=originalFetch; }
+});

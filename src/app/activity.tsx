@@ -60,8 +60,9 @@ export default function ActivityScreen() {
         {group.entries.map((entry, index) => {
           const checkIn = entry.kind === "balance_check_in";
           const income = entry.kind === "income";
+          const transfer = entry.kind === "savings_transfer";
           const starting = checkIn && entry.balanceBefore === null;
-          const label = checkIn ? (starting ? "Starting balance" : "Balance check-in") : income ? "Income" : "Purchase";
+          const label = transfer ? "Moved to savings" : checkIn ? (starting ? "Starting balance" : "Balance check-in") : income ? "Income" : "Purchase";
           const change = checkIn || income ? entry.amount : -entry.amount;
           const changeLabel = starting ? formatCurrency(entry.balanceAfter!) : change === 0 ? "No change"
             : `${change > 0 ? "+" : "−"}${formatCurrency(Math.abs(change))}`;

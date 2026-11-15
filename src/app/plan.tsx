@@ -45,7 +45,7 @@ export default function PlanScreen() {
         <PlanCard
           title="Savings"
           amount={Number.isFinite(savingsReserved) ? formatCurrency(savingsReserved) : "—"}
-          description={savingsMode === "income" ? `${savingsValue || "0"}% of logged income` : savingsMode === "percentage" ? `${savingsValue || "0"}% of current balance` : "Fixed amount · Set aside"}
+          description={savingsMode === "incomeAmount" ? `${formatCurrency(Number(savingsValue))} per income` : savingsMode === "income" ? `${savingsValue || "0"}% of logged income` : savingsMode === "percentage" ? `${savingsValue || "0"}% of current balance` : "Fixed amount · Set aside"}
           onPress={() => openSection("savings")}
         />
         <PlanCard

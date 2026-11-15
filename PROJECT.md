@@ -104,6 +104,8 @@ safe to spend = current balance - upcoming bills - savings goal
 
 ## Current Progress
 
+- Savings now offers two income-based methods: percentage or fixed amount per income (capped at income). Positive allocations create pending cards on Home and Plan → Savings. Mark as saved confirms money was moved to another account, reduces balance and reserve equally, records Activity, and leaves safe-to-spend unchanged. Saved cards are expandable; prior reserves are preserved as carryover cards. The applied migration `supabase/migrations/20261115175430_income_savings_tasks.sql` protects completed receipts. Optional device-local 6 PM reminders cover pending cards; native delivery and a rebuilt app remain to be verified. See backend README for rollout and validation details.
+
 - Log purchases & income is the recommended, preselected onboarding option and fallback Home view. Balance check-ins remain available as an alternative; existing saved preferences are respected.
 
 - Simplified Savings to a method picker, one input, a live “For every $100” income example, and a Set aside summary. Income reserve editing lives under Adjust. Untouched plans with supported APIs default to From income at 10%; existing savings settings and existing balance/history plans are preserved. Fixed amount behavior is unchanged; Mark as saved was skipped at the user’s request. Frontend TypeScript, all 32 frontend tests, web export, and synthetic browser checks passed for defaults, preservation, allocations, adjustments, reload, validation, unsupported APIs, and 320px layout. No backend or database changes are required.

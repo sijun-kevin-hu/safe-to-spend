@@ -66,3 +66,37 @@ test('new plans default to income savings without changing existing or unsupport
   assert.deepEqual(output.initialSavingsChoice({...fresh,...existing}),{mode:'amount',value:''});
  }
 });
+
+
+test('fixed income allocation is capped, rounded and creates one card per receipt',()=>{
+ let state=recordTransaction({...initial,incomeSavingsReserved:0},income,null,50);
+ assert.equal(state.incomeSavingsReserved,50);
+ state=recordTransaction(state,{...income,id:'tips',amount:20},null,50);
+ assert.equal(state.incomeSavingsReserved,70);
+ assert.equal(output.savingsTasks(state).length,2);
+ assert.equal(output.savingsTasks(state)[0].amount,20);
+ assert.equal(recordTransaction(state,{...income,id:'tips',amount:20},null,50),state);
+ assert.throws(()=>recordTransaction(initial,income,null,-1));
+});
+test('mark saved transfers money once, preserves safe to spend and survives reload',()=>{
+ const received=recordTransaction({...initial,incomeSavingsReserved:0},income,10);
+ const room=received.balance-received.incomeSavingsReserved;
+ const moved=output.markSavingsSaved(received,'pay',time);
+ assert.equal(moved.balance,1450);assert.equal(moved.incomeSavingsReserved,0);
+ assert.equal(moved.balance-moved.incomeSavingsReserved,room);
+ assert.equal(moved.purchases[0].kind,'savings_transfer');
+ assert.equal(moved.purchases.find(e=>e.id==='pay').savingsSavedAt,time);
+ const reloaded=JSON.parse(JSON.stringify(moved));
+ assert.equal(output.markSavingsSaved(reloaded,'pay',time),reloaded);
+ assert.equal(output.savingsTasks(reloaded)[0].savedAt,time);
+});
+test('legacy reserve remains transferable and insufficient balances cannot complete tasks',()=>{
+ const moved=output.markSavingsSaved(initial,'carryover',time);
+ assert.equal(moved.balance,850);assert.equal(moved.incomeSavingsReserved,0);
+ assert.equal(output.savingsTasks(moved).filter(t=>!t.savedAt).length,0);
+ assert.equal(output.savingsTasks(moved)[0].savedAt,time);
+ const received=recordTransaction({...initial,incomeSavingsReserved:0},income,10);
+ assert.throws(()=>output.markSavingsSaved({...received,balance:10},'pay',time));
+ const spent=recordTransaction(received,{...income,id:'purchase',kind:'purchase',amount:30},10);
+ assert.equal(output.savingsTasks(spent)[0].amount,50);
+});

@@ -1,3 +1,5 @@
+import { SavingsTasks } from "@/components/plan/savings-tasks";
+import { Snackbar } from "@/components/snackbar";
 import { AppButton } from "@/components/app-button";
 import { CurrencyInput } from "@/components/currency-input";
 import { SaveStatus } from "@/components/plan/save-status";
@@ -10,7 +12,9 @@ import { useEffect, useRef, useState } from "react";
 import { Keyboard, StyleSheet, Text, TextInput, View } from "react-native";
 
 export function PurchaseHome({ onBalance }: { onBalance: () => void }) {
-  return <Screen><ActivityContent onBalance={onBalance} /></Screen>;
+  const { savingsMethodMessage, dismissSavingsMethodMessage } = usePlan();
+  return <><Screen><ActivityContent onBalance={onBalance} /><SavingsTasks compact /></Screen>
+    {!!savingsMethodMessage && <Snackbar message={savingsMethodMessage} onDismiss={dismissSavingsMethodMessage} />}</>;
 }
 
 export function ActivityContent({ onBalance, compact = false, onSaved }: {
@@ -132,10 +136,10 @@ export function ActivityContent({ onBalance, compact = false, onSaved }: {
       {isIncome && savingsMode === "percentage" && <Text style={styles.caption}>
         Your percentage savings reserve also updates with your balance.
       </Text>}
-      {isIncome && savingsMode === "income" && <Text style={styles.caption}>
+      {isIncome && (savingsMode === "income" || savingsMode === "incomeAmount") && <Text style={styles.caption}>
         {Number.isFinite(Number(amount)) && Number(amount) >= 0.01 && !validationError
-          ? `${formatCurrency(Math.round(Number(amount) * Number(savingsValue)) / 100)} goes to savings (${savingsValue}%).`
-          : `${savingsValue}% of this income will go to your savings reserve.`}
+          ? `${formatCurrency(savingsMode === "incomeAmount" ? Math.min(Number(amount), Number(savingsValue)) : Math.round(Number(amount) * Number(savingsValue)) / 100)} set aside for savings.`
+          : savingsMode === "incomeAmount" ? `Up to ${formatCurrency(Number(savingsValue))} will be set aside.` : `${savingsValue}% will be set aside.`}
       </Text>}
       <AppButton title={isIncome ? "Add income" : "Add purchase"}
         disabled={!!pendingConfirmation || saveState !== "saved" || (isIncome && !supportsIncome)} onPress={submit} />

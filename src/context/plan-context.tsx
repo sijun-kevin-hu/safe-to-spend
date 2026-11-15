@@ -5,6 +5,9 @@ import {
   calculateSavingsReserved,
   initialSavingsChoice,
   recordTransaction,
+  markSavingsSaved,
+  savingsTasks,
+  type SavingsTask,
   type TransactionKind,
   updateTrackingBalance,
   type TrackingPreference,
@@ -15,6 +18,7 @@ import {
   type PlanInput,
   type StoredPlan,
 } from "@/lib/plan";
+import { useSavingsReminders } from "@/lib/savings-reminders";
 import { requestPlan } from "@/lib/plan-api";
 import type { Bill } from "@/types/bill";
 import {
@@ -26,6 +30,10 @@ import { useAuth } from "./auth-context";
 
 type PlanContextValue = {
   saveState: SaveState;
+  supportsSavingsTasks: boolean;
+  savingsTasks: SavingsTask[];
+  markSavingsSaved: (id: string) => void;
+  reminder: ReturnType<typeof useSavingsReminders>;
   savingsMethodMessage: string;
   dismissSavingsMethodMessage: () => void;
   supportsIncome: boolean;
@@ -115,7 +123,8 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
     };
     setIncomeReserveDraft(null);
     setTracking((current) => recordTransaction(current, transaction,
-      savingsMode === "income" ? Number(savingsValue) : null));
+      savingsMode === "income" ? Number(savingsValue) : null,
+      savingsMode === "incomeAmount" ? Number(savingsValue) : null));
   }
   const initialSavings = initialSavingsChoice(initialPlan);
   const [savingsMode, setSavingsMode] = useState<SavingsMode>(initialSavings.mode);
@@ -131,6 +140,8 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
   const [billItems, setBillItems] = useState(initialPlan.billItems);
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [savingsMethodMessage, setSavingsMethodMessage] = useState("");
+  const pendingTransfer = useRef<string | null>(null);
+  const pendingAction = useRef(false);
   const pendingMethod = useRef<SavingsMode | null>(null);
   const queue = useRef<Autosave<PlanInput> | null>(null);
   const validationError = savingsError(savingsMode, savingsValue) || (savingsMode === "income" &&
@@ -139,8 +150,9 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
   const validBalance = !!balance.trim() && Number.isFinite(Number(balance));
   const setting = savingsSetting(savingsMode, savingsValue);
   const { savingsAmount, savingsPercentage } = setting;
+  const savingsIncomeAmount = setting.savingsIncomeAmount ?? null;
   const savingsIncomePercentage = setting.savingsIncomePercentage ?? null;
-  const savingsReserved = savingsMode === "income" ? tracking.incomeSavingsReserved ?? 0 : calculateSavingsReserved(
+  const savingsReserved = (savingsMode === "income" || savingsMode === "incomeAmount") ? tracking.incomeSavingsReserved ?? 0 : calculateSavingsReserved(
     Number(balance),
     savingsAmount,
     savingsPercentage,
@@ -154,6 +166,7 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
     purchases: initialPlan.purchases,
     savingsAmount: initialPlan.savingsAmount,
     savingsPercentage: initialPlan.savingsPercentage,
+    savingsIncomeAmount: initialPlan.savingsIncomeAmount ?? null,
     savingsIncomePercentage: initialPlan.savingsIncomePercentage ?? null,
     incomeSavingsReserved: initialPlan.incomeSavingsReserved ?? 0,
     billItems: initialPlan.billItems,
@@ -163,11 +176,13 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
   useEffect(() => {
     const autosave = new Autosave(initialInput, async (plan) => {
       await requestPlan(userId, plan);
-      const mode = plan.savingsIncomePercentage != null ? "income" : plan.savingsPercentage != null ? "percentage" : "amount";
+      const mode = plan.savingsIncomeAmount != null ? "incomeAmount" : plan.savingsIncomePercentage != null ? "income" : plan.savingsPercentage != null ? "percentage" : "amount";
       if (pendingMethod.current === mode) {
         pendingMethod.current = null;
-        setSavingsMethodMessage(`Switched to ${mode === "income" ? "From income" : mode === "amount" ? "Fixed amount" : "Of balance"}.`);
+        setSavingsMethodMessage(`Switched to ${mode === "incomeAmount" ? "Fixed per income" : mode === "income" ? "Percentage per income" : mode === "amount" ? "Fixed amount" : "Of balance"}.`);
       }
+      const transfer = plan.purchases.find(e => e.kind === "savings_transfer" && e.id === pendingTransfer.current);
+      if (transfer) { pendingTransfer.current = null; setSavingsMethodMessage("Marked as saved. Balance updated."); }
     }, setSaveState);
     queue.current = autosave;
     return () => { autosave.dispose(); queue.current = null; };
@@ -181,6 +196,7 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
       purchases: tracking.purchases,
       savingsAmount,
       savingsPercentage,
+      savingsIncomeAmount,
       savingsIncomePercentage,
       incomeSavingsReserved: tracking.incomeSavingsReserved ?? 0,
       billItems,
@@ -192,6 +208,7 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
     tracking,
     savingsAmount,
     savingsPercentage,
+    savingsIncomeAmount,
     savingsIncomePercentage,
     savingsReserved,
     validationError,
@@ -200,21 +217,38 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
 
   function changeSavingsMode(mode: SavingsMode) {
     if (mode === savingsMode) return;
-    if (mode === "income" && !initialPlan.supportsIncomeSavings) return;
+    if ((mode === "income" || mode === "incomeAmount") && !initialPlan.supportsSavingsTasks) return;
     pendingMethod.current = mode;
     setSavingsMethodMessage("");
     const currentBalance = Number(balance);
     const reserve = Number.isFinite(savingsReserved) ? savingsReserved : 0;
     setIncomeReserveDraft(null);
-    if (mode === "income") setTracking((current) => ({ ...current, incomeSavingsReserved: reserve }));
-    setSavingsValue(mode === "income" ? (savingsMode === "percentage" ? savingsValue : "10") : mode === "percentage"
+    if (mode === "income" || mode === "incomeAmount") setTracking((current) => ({ ...current, incomeSavingsReserved: reserve }));
+    setSavingsValue(mode === "incomeAmount" ? "0" : mode === "income" ? (savingsMode === "percentage" ? savingsValue : "10") : mode === "percentage"
       ? String(currentBalance > 0 ? Math.min(100, Math.round(reserve / currentBalance * 10000) / 100) : 0)
       : String(reserve));
     setSavingsMode(mode);
   }
 
+  const tasks = savingsTasks({ ...tracking, incomeSavingsReserved: savingsReserved });
+  const reminder = useSavingsReminders(userId, tasks.filter(t => !t.savedAt).length, saveState === "saved");
+  useEffect(() => { if (saveState === "saved") pendingAction.current = false; }, [saveState]);
+  function completeSavings(id: string) {
+    if (pendingAction.current || saveState !== "saved" || validationError || !initialPlan.supportsSavingsTasks) return;
+    const current = { ...tracking, incomeSavingsReserved: savingsReserved };
+    const next = markSavingsSaved(current, id, new Date().toISOString());
+    if (next === current) return;
+    pendingAction.current = true;
+    pendingTransfer.current = next.purchases[0].id;
+    setIncomeReserveDraft(null);
+    // Older reserve methods transition only with an explicit action, preserving the total.
+    if (savingsMode === "amount" || savingsMode === "percentage") { setSavingsMode("income"); setSavingsValue("10"); }
+    setTracking(next);
+  }
+
   return (
     <PlanContext.Provider value={{
+      supportsSavingsTasks: initialPlan.supportsSavingsTasks === true, savingsTasks: tasks, markSavingsSaved: completeSavings, reminder,
       savingsMethodMessage, dismissSavingsMethodMessage: () => setSavingsMethodMessage(""),
       saveState, balance, trackingPreference, setTrackingPreference,
       supportsIncome: initialPlan.supportsIncome,

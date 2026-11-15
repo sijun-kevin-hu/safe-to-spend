@@ -168,3 +168,16 @@ test('profiles require a trimmed display name and valid non-future date of birth
     { displayName: 'Kevin Hu', dateOfBirth: '2999-01-01' },
   ]) assert.equal(profileSchema.safeParse(profile).success, false);
 });
+
+
+test('fixed-per-income and completed savings receipts validate without double deduction',()=>{
+ const base={balance:1450,billItems:[],savingsIncomeAmount:50,incomeSavingsReserved:0};
+ const income={id:'pay',kind:'income',amount:500,createdAt:'2026-11-15T12:00:00.000Z',balanceBefore:1000,balanceAfter:1500,savingsAllocated:50,savingsSavedAt:'2026-11-15T13:00:00.000Z'};
+ const transfer={id:'saved-pay',kind:'savings_transfer',savingsSourceId:'pay',amount:50,createdAt:income.savingsSavedAt,balanceBefore:1500,balanceAfter:1450};
+ const valid=planSchema.parse({...base,purchases:[transfer,income]});
+ assert.equal(valid.savingsReserved,0);assert.equal(valid.balance,1450);
+ for(const purchases of [[income],[transfer], [transfer, {...income,savingsAllocated:49}], [{...transfer,balanceAfter:1400},income]]) {
+  assert.equal(planSchema.safeParse({...base,purchases}).success,false);
+ }
+ assert.equal(planSchema.safeParse({...base,savingsIncomePercentage:10,purchases:[]}).success,false);
+});
