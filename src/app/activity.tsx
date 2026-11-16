@@ -61,14 +61,14 @@ export default function ActivityScreen() {
         <Text style={styles.balance}>{balanceUpdatedAt ? formatCurrency(Number(balance)) : "—"}</Text>
       </View>
     </View>
-    <AppButton title="Import CSV" variant="secondary" onPress={() => setImportOpen(true)} />
+    <AppButton title="Import transactions" variant="secondary" onPress={() => setImportOpen(true)} />
     <ActivityFilters preset={preset} onPreset={value => { setPreset(value); setVisibleCount(20); }}
       start={start} end={end} onStart={value => { setStart(value); setVisibleCount(20); }}
       onEnd={value => { setEnd(value); setVisibleCount(20); }} count={filtered.length} />
     {groups.length === 0 ? <View style={styles.empty}>
       <View style={[styles.icon, styles.checkInIcon]}><Text style={styles.checkInSymbol}>↻</Text></View>
       <Text style={styles.emptyTitle}>{purchases.length ? "No activity in this range." : "A fresh start."}</Text>
-      <Text style={styles.emptyBody}>{purchases.length ? "Try another date range or choose All time." : "Check in with your balance, log a purchase, or import a CSV to start your history."}</Text>
+      <Text style={styles.emptyBody}>{purchases.length ? "Try another date range or choose All time." : "Check in with your balance, log a purchase, or import transactions from a CSV file to start your history."}</Text>
     </View> : groups.map((group, groupIndex) => <View key={`${group.day}-${groupIndex}`} style={styles.group}>
       <Text accessibilityRole="header" style={styles.day}>{group.label}</Text>
       <View style={styles.ledger}>
