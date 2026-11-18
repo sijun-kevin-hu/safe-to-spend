@@ -1,6 +1,7 @@
 import type { Bill } from "./bill";
 
 export interface Plan {
+  payPeriod: { frequency: "weekly" | "biweekly" | "semimonthly" | "monthly" | "bimonthly"; nextPayday: string } | null;
   activityRevision?: number | undefined;
   balance: number;
   trackingPreference: "purchases" | "balance" | null;

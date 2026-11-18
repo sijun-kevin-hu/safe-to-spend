@@ -197,3 +197,15 @@ test('CSV history metadata survives persistence and cannot masquerade as balance
     assert.equal(planSchema.safeParse({...base,purchases:[{...entry,...extra}]}).success,false);
   }
 });
+
+
+test('pay periods validate all schedules, preserve anchors, and default legacy plans to null', () => {
+  assert.equal(planSchema.parse(base).payPeriod, null);
+  for (const frequency of ['weekly', 'biweekly', 'semimonthly', 'monthly', 'bimonthly']) {
+    const payPeriod = { frequency, nextPayday: '2028-02-29' };
+    assert.deepEqual(planSchema.parse({ ...base, payPeriod }).payPeriod, payPeriod);
+  }
+  for (const payPeriod of [{frequency:'daily', nextPayday:'2026-11-20'}, {frequency:'monthly', nextPayday:'2026-02-30'}, {frequency:'weekly'}]) {
+    assert.equal(planSchema.safeParse({ ...base, payPeriod }).success, false);
+  }
+});

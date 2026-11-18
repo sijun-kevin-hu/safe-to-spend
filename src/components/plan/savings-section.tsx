@@ -1,5 +1,4 @@
 import { CurrencyInput } from "@/components/currency-input";
-import { SavingsTasks } from "@/components/plan/savings-tasks";
 import { palette, ui } from "@/constants/design";
 import { usePlan } from "@/context/plan-context";
 import { formatCurrency } from "@/lib/format";
@@ -24,7 +23,7 @@ export function SavingsSection() {
           <Text style={{ color: palette.text, fontWeight: "600" }}>{mode === "income" ? "Percentage" : "Fixed amount"}</Text>
         </Pressable>)}
       </View>
-      {!supportsSavingsTasks && <Text style={ui.error}>Update the API to use savings cards.</Text>}
+      {!supportsSavingsTasks && <Text style={ui.error}>Update the API to use income savings.</Text>}
       {!legacy && <>
         <Text style={ui.label}>{fixed ? "Amount per income" : "Percentage per income"}</Text>
         <CurrencyInput accessibilityLabel={fixed ? "Income savings amount" : "Income savings percentage"} symbol={fixed ? "$" : "%"}
@@ -34,10 +33,9 @@ export function SavingsSection() {
       {!!validationError && <Text accessibilityRole="alert" style={ui.error}>{validationError}</Text>}
     </View>
     <View style={[ui.card, { backgroundColor: palette.soft }]}>
-      <Text style={ui.label}>Waiting to move</Text>
+      <Text style={ui.label}>Set aside</Text>
       <Text style={[ui.money, { fontSize: 32 }]}>{formatCurrency(savingsReserved)}</Text>
       <Text style={ui.body}>Already kept out of safe-to-spend.</Text>
     </View>
-    <SavingsTasks />
   </>;
 }

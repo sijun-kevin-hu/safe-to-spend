@@ -12,7 +12,7 @@ app.use(allowCrossOrigin);
 app.use(express.json({ limit: "1mb" }));
 const port = Number(process.env.PORT) || 3000;
 
-type PlanResponse = (Plan & { supportsIncome: true; supportsRecurringBills: true; supportsIncomeSavings: boolean; supportsSavingsTasks: boolean; supportsActivityEditing: boolean; supportsCsvImport: boolean }) | { error: string };
+type PlanResponse = (Plan & { supportsIncome: true; supportsRecurringBills: true; supportsIncomeSavings: boolean; supportsSavingsTasks: boolean; supportsActivityEditing: boolean; supportsCsvImport: boolean; supportsPayPeriod: true }) | { error: string };
 type AuthResponse = { id: string; email: string | null } | { error: string };
 type ProfileResponse = Profile | null | { error: string };
 
@@ -95,7 +95,7 @@ app.get<{}, PlanResponse>("/plan", requireAuth, async (_req, res) => {
   const [planResult, profileResult, incomeSavings] = await Promise.all([
     userSupabase
       .from("plans")
-      .select("balance, savings_goal, savings_amount, savings_percentage, bill_items, balance_updated_at, purchases, activity_revision")
+      .select("pay_period, balance, savings_goal, savings_amount, savings_percentage, bill_items, balance_updated_at, purchases, activity_revision")
       .eq("user_id", user.id)
       .maybeSingle(),
     userSupabase
@@ -120,6 +120,8 @@ app.get<{}, PlanResponse>("/plan", requireAuth, async (_req, res) => {
 
   if (planResult.data === null) {
     res.json({
+      payPeriod: null,
+      supportsPayPeriod: true,
       activityRevision: 0,
       supportsActivityEditing: true,
       supportsCsvImport: true,
@@ -147,6 +149,7 @@ app.get<{}, PlanResponse>("/plan", requireAuth, async (_req, res) => {
     ? Number(data.savings_goal) || null
     : Number(data.savings_amount);
   const result = planSchema.safeParse({
+    payPeriod: data.pay_period,
     activityRevision: Number(data.activity_revision),
     balance: Number(data.balance),
     trackingPreference,
@@ -166,7 +169,7 @@ app.get<{}, PlanResponse>("/plan", requireAuth, async (_req, res) => {
     return;
   }
 
-  res.json({ ...result.data, supportsIncome: true, supportsRecurringBills: true, supportsIncomeSavings: incomeSavings.supported, supportsSavingsTasks: incomeSavings.supported, supportsActivityEditing: true, supportsCsvImport: true });
+  res.json({ ...result.data, supportsIncome: true, supportsRecurringBills: true, supportsIncomeSavings: incomeSavings.supported, supportsSavingsTasks: incomeSavings.supported, supportsActivityEditing: true, supportsCsvImport: true, supportsPayPeriod: true });
 });
 
 app.put<{}, PlanResponse, unknown>("/plan", requireAuth, async (req, res) => {
@@ -201,7 +204,14 @@ app.put<{}, PlanResponse, unknown>("/plan", requireAuth, async (req, res) => {
   if (!includesIncomeSavings && (incomeSavings.percentage !== null || incomeSavings.amount !== null)) {
     res.status(409).json({ error: "Update the app to preserve your income-based savings." }); return;
   }
-  const savedPlan = { ...result.data,
+  const includesPayPeriod = Boolean(req.body && typeof req.body === "object" && "payPeriod" in req.body);
+  let payPeriod = result.data.payPeriod;
+  if (!includesPayPeriod) {
+    const previous = await userSupabase.from("plans").select("pay_period").eq("user_id", user.id).maybeSingle();
+    if (previous.error) { res.status(500).json({ error: "Unable to verify pay period." }); return; }
+    payPeriod = previous.data?.pay_period ?? null;
+  }
+  const savedPlan = { ...result.data, payPeriod,
     savingsIncomePercentage: includesIncomeSavings ? result.data.savingsIncomePercentage : incomeSavings.percentage,
     incomeSavingsReserved: includesIncomeSavings ? result.data.incomeSavingsReserved : incomeSavings.reserved };
   const includesTrackingPreference = Boolean(
@@ -212,6 +222,7 @@ app.put<{}, PlanResponse, unknown>("/plan", requireAuth, async (req, res) => {
   const { error: planError } = await userSupabase.from("plans").upsert(
     {
       user_id: user.id,
+      ...(req.body && typeof req.body === "object" && "payPeriod" in req.body ? { pay_period: result.data.payPeriod } : {}),
       ...(result.data.activityRevision !== undefined ? { activity_revision: result.data.activityRevision } : {}),
       balance: result.data.balance,
       // Keep the legacy derived column populated during the API rollout.
@@ -256,7 +267,7 @@ app.put<{}, PlanResponse, unknown>("/plan", requireAuth, async (req, res) => {
     }
   }
 
-  res.json({ ...savedPlan, supportsIncome: true, supportsRecurringBills: true, supportsIncomeSavings: incomeSavings.supported, supportsSavingsTasks: incomeSavings.supported, supportsActivityEditing: true, supportsCsvImport: true });
+  res.json({ ...savedPlan, supportsIncome: true, supportsRecurringBills: true, supportsIncomeSavings: incomeSavings.supported, supportsSavingsTasks: incomeSavings.supported, supportsActivityEditing: true, supportsCsvImport: true, supportsPayPeriod: true });
 });
 
 app.listen(port, () => {

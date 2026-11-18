@@ -7,7 +7,7 @@ function loadApi(path) {
     compilerOptions: { module: ts.ModuleKind.CommonJS },
   }).outputText;
   const output = {};
-  new Function('exports', 'require', source)(output, (name) => name === './bills' ? loadApi('src/lib/bills.ts') : ({
+  new Function('exports', 'require', source)(output, (name) => name === './pay-period' ? loadApi('src/lib/pay-period.ts') : name === './bills' ? loadApi('src/lib/bills.ts') : ({
     supabase: { auth: { getSession: async () => ({ data: {
       session: { user: { id: 'preview' }, access_token: 'mock' },
     } }) } },
@@ -189,4 +189,22 @@ test('CSV imports require the server to preserve history-only semantics', async 
     response={...response,purchases:[{...sent.purchases[0],historyOnly:undefined}]};
     await assert.rejects(requestPlan('preview',sent));
   }finally{global.fetch=originalFetch;}
+});
+
+
+test('pay periods require validation and exact server confirmation', async () => {
+  const previous = global.fetch;
+  const payPeriod = { frequency: 'biweekly', nextPayday: '2026-11-27' };
+  const plan = { ...input, payPeriod };
+  let response = { ...plan, savingsReserved: 0, supportsPayPeriod: true };
+  global.fetch = async () => ({ ok: true, json: async () => response });
+  try {
+    assert.deepEqual((await requestPlan('preview', plan)).payPeriod, payPeriod);
+    response = { ...response, payPeriod: null };
+    await assert.rejects(requestPlan('preview', plan));
+    response = { ...response, payPeriod: { ...payPeriod, nextPayday: '2026-02-30' } };
+    await assert.rejects(requestPlan('preview'));
+    response = { ...response, payPeriod: { ...payPeriod, frequency: 'weekly' } };
+    await assert.rejects(requestPlan('preview', plan));
+  } finally { global.fetch = previous; }
 });

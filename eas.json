@@ -1,0 +1,29 @@
+{
+  "cli": {
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "testflight": {
+      "distribution": "store",
+      "environment": "production",
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://xprrjmqfkenkcslysnqu.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_DZeUYgPd-5NQlZoaXHF_jg_6vwq9gCH",
+        "EXPO_PUBLIC_API_URL": "https://safe-to-spend-chi.vercel.app"
+      },
+      "ios": {
+        "env": {
+          "EXPO_USE_PRECOMPILED_MODULES": "0"
+        }
+      }
+    }
+  },
+  "submit": {
+    "testflight": {
+      "ios": {
+        "ascAppId": "6836142044"
+      }
+    }
+  }
+}

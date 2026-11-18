@@ -1,3 +1,4 @@
+import { isPayPeriod } from "./pay-period";
 import type { PlanInput, ActivityEntry, StoredPlan } from "./plan";
 import { isValidBill, sameBill } from "./bills";
 import { supabase } from "./supabase";
@@ -77,6 +78,11 @@ export async function requestPlan(
     )) {
       throw new Error("The server did not save your savings setting. Please update the API.");
     }
+    const payPeriod = value.payPeriod ?? null;
+    if (payPeriod !== null && !isPayPeriod(payPeriod)) throw new Error("Invalid pay period.");
+    if (plan?.payPeriod && (!value.supportsPayPeriod || payPeriod?.frequency !== plan.payPeriod.frequency || payPeriod?.nextPayday !== plan.payPeriod.nextPayday)) {
+      throw new Error("The server did not save your pay period. Please update the API.");
+    }
     const activityRevision = value.activityRevision ?? 0;
     if (!Number.isSafeInteger(activityRevision) || activityRevision < 0) throw new Error("Invalid activity revision.");
     if (plan && activityRevision !== (plan.activityRevision ?? 0)) throw new Error("Your activity changes were not saved.");
@@ -112,6 +118,7 @@ export async function requestPlan(
       }))
     )) throw new Error("The server did not save your balance or transactions. Please update the API.");
     return {
+      payPeriod, supportsPayPeriod: value.supportsPayPeriod === true,
       activityRevision,
       supportsActivityEditing: value.supportsActivityEditing === true,
       supportsCsvImport: value.supportsCsvImport === true,

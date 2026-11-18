@@ -50,7 +50,7 @@ function BalanceHome({ onPurchases, onUpdated }: {
   const [confirmation, setConfirmation] = useState<{ id: number; message: string } | null>(null);
   const dismissConfirmation = useCallback(() => setConfirmation(null), []);
   const submitted = useRef(false);
-  const billsTotal = billItems.reduce((total, bill) => total + bill.amount, 0);
+  const { billsReserved: billsTotal } = usePlan();
 
   function submit() {
     if (submitted.current || saveState !== "saved") return;

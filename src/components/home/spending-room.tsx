@@ -1,11 +1,11 @@
 import { palette, ui } from "@/constants/design";
 import { usePlan } from "@/context/plan-context";
-import { formatCurrency } from "@/lib/format";
+import { formatBillDate, formatCurrency } from "@/lib/format";
 import { StyleSheet, Text, View } from "react-native";
 
 export function SpendingRoom() {
   const { balance, balanceUpdatedAt, billItems, savingsReserved, validationError } = usePlan();
-  const billsTotal = billItems.reduce((total, bill) => total + bill.amount, 0);
+  const { billsReserved: billsTotal, periodEnd: endDate } = usePlan();
   const available = balanceUpdatedAt && !validationError
     ? Number(balance) - billsTotal - savingsReserved : null;
   const overBudget = available !== null && available < 0;
@@ -22,6 +22,7 @@ export function SpendingRoom() {
     <Text style={[styles.amount, overBudget && styles.negative]}>
       {available === null ? "—" : formatCurrency(available)}
     </Text>
+    {endDate && <Text style={ui.body}>Until {formatBillDate(endDate)} · next payday</Text>}
     <Text style={ui.body}>{message}</Text>
   </View>;
 }

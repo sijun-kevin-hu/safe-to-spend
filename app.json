@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "safe-to-spend",
+    "name": "Safe to Spend",
     "slug": "safe-to-spend",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,7 +8,11 @@
     "scheme": "safetospend",
     "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.kevinideas.safetospend",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {

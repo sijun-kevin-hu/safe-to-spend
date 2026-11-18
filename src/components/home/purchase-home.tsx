@@ -1,5 +1,4 @@
 import { SpendingRoom } from "@/components/home/spending-room";
-import { SavingsTasks } from "@/components/plan/savings-tasks";
 import { Snackbar } from "@/components/snackbar";
 import { AppButton } from "@/components/app-button";
 import { CurrencyInput } from "@/components/currency-input";
@@ -14,7 +13,7 @@ import { Keyboard, StyleSheet, Text, TextInput, View } from "react-native";
 
 export function PurchaseHome({ onBalance }: { onBalance: () => void }) {
   const { savingsMethodMessage, dismissSavingsMethodMessage } = usePlan();
-  return <><Screen><ActivityContent onBalance={onBalance} /><SavingsTasks compact /></Screen>
+  return <><Screen><ActivityContent onBalance={onBalance} /></Screen>
     {!!savingsMethodMessage && <Snackbar message={savingsMethodMessage} onDismiss={dismissSavingsMethodMessage} />}</>;
 }
 

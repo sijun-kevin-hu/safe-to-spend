@@ -1,3 +1,6 @@
+import { billsReserved as reserveBills, periodEnd, type PayPeriod } from "@/lib/pay-period";
+import { toDateOnly } from "@/lib/format";
+import { AppState } from "react-native";
 import { importHistory } from "@/lib/activity-csv";
 import { reviseActivity, type ActivityEdit } from "@/lib/activity";
 import { AppButton } from "@/components/app-button";
@@ -31,6 +34,11 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "./auth-context";
 
 type PlanContextValue = {
+  payPeriod: PayPeriod | null;
+  setPayPeriod: (value: PayPeriod) => void;
+  supportsPayPeriod: boolean;
+  billsReserved: number;
+  periodEnd: string | null;
   saveState: SaveState;
   supportsCsvImport: boolean;
   importActivity: (entries: TrackingState["purchases"]) => void;
@@ -106,6 +114,14 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
   initialPlan: StoredPlan;
   userId: string;
 }>) {
+  const [payPeriod, setPayPeriod] = useState<PayPeriod | null>(initialPlan.payPeriod ?? null);
+  const [today, setToday] = useState(() => toDateOnly(new Date()));
+  useEffect(() => {
+    const refresh = () => setToday(toDateOnly(new Date()));
+    const timer = setInterval(refresh, 30000);
+    const subscription = AppState.addEventListener("change", state => { if (state === "active") refresh(); });
+    return () => { clearInterval(timer); subscription.remove(); };
+  }, []);
   const [trackingPreference, setTrackingPreference] = useState(initialPlan.trackingPreference);
   const [tracking, setTracking] = useState<TrackingState>({
     activityRevision: initialPlan.activityRevision ?? 0,
@@ -168,6 +184,7 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
     tracking.incomeSavingsReserved ?? 0,
   );
   const initialInput: PlanInput = {
+    payPeriod: initialPlan.payPeriod ?? null,
     activityRevision: initialPlan.activityRevision ?? 0,
     balance: initialPlan.balance,
     trackingPreference: initialPlan.trackingPreference,
@@ -202,6 +219,7 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
       activityRevision: tracking.activityRevision ?? 0,
       balance: Number(balance),
       trackingPreference,
+      payPeriod,
       balanceUpdatedAt: tracking.balanceUpdatedAt,
       purchases: tracking.purchases,
       savingsAmount,
@@ -215,6 +233,7 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
     balance,
     validBalance,
     trackingPreference,
+    payPeriod,
     tracking,
     savingsAmount,
     savingsPercentage,
@@ -279,6 +298,9 @@ function EditablePlan({ initialPlan, userId, children }: PropsWithChildren<{
 
   return (
     <PlanContext.Provider value={{
+      payPeriod, setPayPeriod, supportsPayPeriod: initialPlan.supportsPayPeriod === true,
+      billsReserved: reserveBills(billItems, payPeriod, today),
+      periodEnd: payPeriod ? periodEnd(payPeriod, today) : null,
       supportsCsvImport: initialPlan.supportsCsvImport === true, importActivity,
       supportsActivityEditing: initialPlan.supportsActivityEditing === true, previewActivity, changeActivity,
       supportsSavingsTasks: initialPlan.supportsSavingsTasks === true, savingsTasks: tasks, markSavingsSaved: completeSavings, reminder,

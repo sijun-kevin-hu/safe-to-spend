@@ -23,7 +23,7 @@ export function BillsSection() {
   const [error, setError] = useState("");
   const ready = saveState === "saved";
   const today = toDateOnly(new Date());
-  const billsTotal = billItems.reduce((total, bill) => total + bill.amount, 0);
+  const { billsReserved: billsTotal } = usePlan();
 
   function openEditor(value: Editor) {
     Keyboard.dismiss(); setNotice(""); setError(""); setEditor(value);
@@ -57,7 +57,7 @@ export function BillsSection() {
     <View style={styles.summary}>
       <Text style={ui.label}>Set aside for bills</Text>
       <Text style={styles.total}>{formatCurrency(billsTotal)}</Text>
-      <Text style={ui.body}>One unpaid payment per recurring bill. Marking paid won’t change your balance.</Text>
+      <Text style={ui.body}>Reserves overdue bills and repeated payments due before your next payday. Marking paid won’t change your balance.</Text>
     </View>
     {!!notice && <Text accessibilityLiveRegion="polite" style={ui.body}>{notice}</Text>}
     {!!error && <Text accessibilityRole="alert" style={ui.error}>{error}</Text>}

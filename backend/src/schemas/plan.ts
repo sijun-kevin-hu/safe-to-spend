@@ -2,6 +2,10 @@ import z = require("zod");
 import { billSchema } from "./bill";
 
 const planInputSchema = z.object({
+  payPeriod: z.object({
+    frequency: z.enum(["weekly", "biweekly", "semimonthly", "monthly", "bimonthly"]),
+    nextPayday: z.iso.date().refine(date => date >= "1000-01-01"),
+  }).nullable().default(null),
   activityRevision: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
   balance: z.number(),
   trackingPreference: z.enum(["purchases", "balance"]).nullable().default(null),

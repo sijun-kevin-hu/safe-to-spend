@@ -1,3 +1,4 @@
+import { PayPeriodSettings } from "@/components/pay-period-picker";
 import { Snackbar } from "@/components/snackbar";
 import { TrackingPreferencePicker } from "@/components/tracking-preference";
 import { AppButton } from "@/components/app-button";
@@ -8,18 +9,19 @@ import { PlanActions } from "@/components/plan-actions";
 import { Screen } from "@/components/screen";
 import { palette, ui } from "@/constants/design";
 import { usePlan } from "@/context/plan-context";
-import { formatCurrency } from "@/lib/format";
+import { payFrequencies } from "@/lib/pay-period";
+import { formatBillDate, formatCurrency } from "@/lib/format";
 import { useEffect, useState } from "react";
 import { BackHandler, Keyboard, Pressable, StyleSheet, Text, View } from "react-native";
 import { useIsFocused } from "expo-router";
 
-type Section = "overview" | "savings" | "bills" | "tracking";
+type Section = "overview" | "savings" | "bills" | "tracking" | "period";
 
 export default function PlanScreen() {
   const [section, setSection] = useState<Section>("overview");
   const { savingsMethodMessage, dismissSavingsMethodMessage, trackingPreference, setTrackingPreference, savingsReserved, savingsMode, savingsValue, billItems } = usePlan();
   const isFocused = useIsFocused();
-  const billsTotal = billItems.reduce((total, bill) => total + bill.amount, 0);
+  const { billsReserved: billsTotal, payPeriod, periodEnd } = usePlan();
 
   useEffect(() => {
     if (!isFocused || section === "overview") return;
@@ -42,6 +44,10 @@ export default function PlanScreen() {
       {section === "overview" && <>
         <Text accessibilityRole="header" style={ui.title}>Your plan</Text>
         <Text style={ui.body}>Set aside money for savings and upcoming bills.</Text>
+        <PlanCard title="Pay period"
+          amount={payFrequencies.find(f => f.value === payPeriod?.frequency)?.label ?? "Choose your period"}
+          description={periodEnd ? `Until ${formatBillDate(periodEnd)} · Change your schedule` : "Match safe to spend to your payday"}
+          onPress={() => openSection("period")} />
         <PlanCard
           title="Savings"
           amount={Number.isFinite(savingsReserved) ? formatCurrency(savingsReserved) : "—"}
@@ -63,8 +69,10 @@ export default function PlanScreen() {
         <Text accessibilityRole="header" style={ui.title}>Balance tracking</Text>
         <Text style={ui.body}>Choose your Home view. You can open the other view anytime.</Text>
         <TrackingPreferencePicker value={trackingPreference} onChange={setTrackingPreference} />
+        <PayPeriodSettings />
         <Text style={ui.body}>Changing this preference keeps your balance and activity history.</Text>
       </>}
+      {section === "period" && <PayPeriodSettings />}
       {section === "savings" && <SavingsSection />}
       {section === "bills" && <BillsSection />}
       <SaveStatus />

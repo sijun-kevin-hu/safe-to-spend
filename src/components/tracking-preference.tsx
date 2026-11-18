@@ -1,3 +1,4 @@
+import { PayPeriodPicker, defaultPayPeriod } from "./pay-period-picker";
 import { AppButton } from "@/components/app-button";
 import { Screen } from "@/components/screen";
 import { palette, ui } from "@/constants/design";
@@ -32,16 +33,19 @@ export function TrackingPreferencePicker({ value, onChange }: {
 }
 
 export function TrackingOnboarding({ children }: PropsWithChildren) {
-  const { trackingPreference, setTrackingPreference } = usePlan();
+  const { trackingPreference, setTrackingPreference, payPeriod, setPayPeriod, supportsPayPeriod } = usePlan();
+  const [period, setPeriod] = useState(defaultPayPeriod);
   const [choice, setChoice] = useState<TrackingPreference>("purchases");
-  if (trackingPreference) return children;
+  if (trackingPreference && (payPeriod || !supportsPayPeriod)) return children;
   return <Screen>
     <Text style={ui.label}>Welcome to Safe to Spend</Text>
-    <Text accessibilityRole="header" style={ui.title}>Keep up with money in and out</Text>
-    <TrackingPreferencePicker value={choice} onChange={setChoice} />
-    <Text style={ui.body}>Choose your Home view. You can change it in Plan anytime.</Text>
+    <Text accessibilityRole="header" style={ui.title}>{trackingPreference ? "Plan until your next payday" : "Keep up with money in and out"}</Text>
+    {!trackingPreference && <TrackingPreferencePicker value={choice} onChange={setChoice} />}
+    {supportsPayPeriod && <PayPeriodPicker value={period} onChange={setPeriod} />}
+    <Text style={ui.body}>You can change your Home view and pay period in Plan anytime.</Text>
     <AppButton title="Continue" disabled={!choice} onPress={() => {
-      if (choice) setTrackingPreference(choice);
+      if (!trackingPreference) setTrackingPreference(choice);
+      if (supportsPayPeriod) setPayPeriod(period);
     }} />
   </Screen>;
 }

@@ -68,6 +68,7 @@ export type SavingsMode = "amount" | "percentage" | "income" | "incomeAmount";
 
 export type PlanInput = {
   activityRevision?: number;
+  payPeriod?: import("./pay-period").PayPeriod | null;
   balance: number;
   trackingPreference: TrackingPreference | null;
   balanceUpdatedAt: string | null;
@@ -83,6 +84,7 @@ export type PlanInput = {
 export type StoredPlan = PlanInput & {
   supportsActivityEditing?: boolean;
   supportsCsvImport?: boolean;
+  supportsPayPeriod?: boolean;
   savingsReserved: number;
   supportsIncome: boolean;
   supportsRecurringBills: boolean;
